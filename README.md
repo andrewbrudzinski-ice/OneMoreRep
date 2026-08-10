@@ -54,12 +54,61 @@ Built in phases per the product spec; each phase is checked before the next.
 
 - [x] **Phase 0 — Foundation & architecture.** Scaffold, full data-model types,
       Dexie schema, Repository interface + IndexedDB implementation, idempotent
-      seeding (11 muscle groups, 56 exercises, default settings, `local-user`),
+      seeding (11 muscle groups, 55 exercises, default settings, `local-user`),
       app shell (bottom tab bar / sidebar, 5 tabs, routing), PWA registration.
-- [ ] Phase 1 — Exercises & Routines
-- [ ] Phase 2 — Workout Mode + Beat Last Time
-- [ ] Phase 3 — History, PRs, Workout Summary
-- [ ] Phase 4 — Nutrition
-- [ ] Phase 5 — Bodyweight, Dashboard, Analytics
-- [ ] Phase 6 — Export/Import + polish
-- [ ] Phase 7 — Should-haves (Readiness, heatmap, RPE auto-regulation)
+- [x] **Phase 1 — Exercises & Routines.** Exercise database with instant
+      search, muscle-group filter, detail view, add/edit custom exercises, and
+      archive. Routine CRUD: create/edit, add/remove/reorder exercises, per-set
+      targets & rep ranges, notes, and duplicate. Pure search + reorder logic
+      unit-tested; routine round-trips (incl. reorder & deep-copy duplicate)
+      tested through the repository.
+- [x] **Phase 2 — Workout Mode + Beat Last Time.** Full-screen logger (own
+      route, no tab bar): intent selector (Push/Normal/Light/Deload), sets
+      pre-filled from last time, ± steppers with tap-to-type, ✓ complete,
+      warm-up toggle, add/remove set, swap/remove exercise, always-visible
+      LAST TIME reference, session timer, screen wake-lock, and immediate
+      (crash-safe) persistence with a Resume banner. The **Beat Last Time
+      engine** (reason-tagged green/amber/grey, honest e1RM detail, deload
+      suppression, warm-up exclusion) and the **plate calculator** are pure
+      and exhaustively unit-tested. Inline plate calc + non-blocking rest
+      timer (Pause / +30s / Skip, gentle buzz at zero).
+- [x] **Phase 3 — History, PRs, Workout Summary.** Auto **PR detection** on
+      completion across all five pr_types, cached to `personal_records` with
+      `previous_value` (pure & unit-tested; warm-ups excluded). Post-workout
+      **summary**: duration, exercise/working-set counts, total volume,
+      deload-aware **vs-last %** wording, and new PRs. **Exercise history**:
+      lifetime bests, per-session breakdown, and e1RM / volume / top-weight
+      **charts** (Recharts, code-split). **Progress** page: PR feed + per-exercise
+      trend links.
+- [x] **Phase 4 — Nutrition.** Custom foods CRUD + instant search; **meals**
+      (grouped foods) CRUD with a per-item editor; daily log by meal type with
+      **macros snapshotted at log time** (editing/deleting a food never rewrites
+      past entries — unit-proven); edit servings / delete entries inline;
+      quick-add a saved meal; live daily totals vs targets as **4 macro rings +
+      a fiber bar**; per-day navigation.
+- [x] **Phase 5 — Bodyweight, Dashboard, Analytics.** Bodyweight entry
+      (one weigh-in/day, upsert) with a **7/30-day rolling-average** chart and
+      stats (current, start, change, avg, high, low). Fixed **Dashboard**:
+      today's workout, bodyweight + trend sparkline, macro rings, this-week
+      count + streak, recent PRs, weekly volume — assembled repository-side.
+      **Progress** analytics: workout frequency (14-day activity), current /
+      longest streak, and 7-day macro consistency. Rolling-average and streak
+      math are pure & unit-tested; Home uses inline SVG sparklines to stay off
+      the Recharts bundle.
+- [x] **Phase 6 — Export/Import + polish.** Validated **JSON export/import**
+      (versioned envelope, rejects foreign/newer/corrupt files; atomic
+      wipe-and-restore) — round-trip proven by test. **Settings** screen
+      (profile, units, goal, theme, macro targets, rest default,
+      load_always_green) with theme applied on load. Empty / loading / **error**
+      states across the primary screens, an About sheet, and a restrained
+      screen-enter transition. Verified installable + **fully offline** (SW
+      precache; offline reload, navigation, and logging all work).
+- [x] **Phase 7 — Should-haves.** **Training Readiness** (Fresh/Moderate/
+      Fatigued) from streak, per-muscle back-to-back recency, and volume trend —
+      qualitative, reasons shown, clearly non-medical (dashboard + Progress).
+      **Muscle-group heatmap**: front/back SVG silhouette shaded by weekly
+      per-muscle working volume; tap → its exercises + volume. **RPE
+      auto-regulation**: "hit target reps at RPE ≤7 twice → try +5 lb / +2.5 kg",
+      shown as a transparent Workout-Mode callout. **Per-exercise remembered
+      rest** (rest timer reuses the last rest used for that exercise). All three
+      engines are pure & unit-tested.
