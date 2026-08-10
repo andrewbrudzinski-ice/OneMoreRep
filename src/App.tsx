@@ -87,7 +87,10 @@ const router = createBrowserRouter([
       </Lazy>
     ),
   },
-]);
+], {
+  // Honor the deploy base path (e.g. GitHub Project Pages subpath).
+  basename: import.meta.env.BASE_URL,
+});
 
 /** Gate the app on the repository being seeded/ready. */
 function Gate() {
