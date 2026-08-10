@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Spinner } from './components/ui';
 import { RepositoryProvider } from './repository/RepositoryContext';
 import { useRepositoryContext } from './repository/repositoryContext';
@@ -124,8 +125,10 @@ function Gate() {
 
 export function App() {
   return (
-    <RepositoryProvider>
-      <Gate />
-    </RepositoryProvider>
+    <ErrorBoundary>
+      <RepositoryProvider>
+        <Gate />
+      </RepositoryProvider>
+    </ErrorBoundary>
   );
 }
