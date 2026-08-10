@@ -2,6 +2,7 @@ import type {
   DayOfWeek,
   Exercise,
   MuscleGroup,
+  PersonalRecord,
   Routine,
   RoutineExercise,
   Settings,
@@ -11,6 +12,7 @@ import type {
   WorkoutIntent,
   WorkoutSet,
 } from '../types';
+import type { VsLastResult } from '../lib/workoutSummary';
 
 /**
  * The Repository contract — the ONLY surface the UI is allowed to touch for
@@ -95,6 +97,14 @@ export interface Repository {
     exerciseId: string,
     options?: { excludeWorkoutId?: string },
   ): Promise<LastSession | undefined>;
+
+  // --- History, PRs & summary ----------------------------------------------
+  /** Cached personal records, newest first. Optionally filtered by exercise. */
+  getPersonalRecords(options?: { exerciseId?: string }): Promise<PersonalRecord[]>;
+  /** Per-exercise history: sessions + lifetime bests, for the history view. */
+  getExerciseHistory(exerciseId: string): Promise<ExerciseHistory | undefined>;
+  /** Post-completion summary: counts, volume, vs-last, and new PRs. */
+  getWorkoutSummary(workoutId: string): Promise<WorkoutSummaryData | undefined>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
@@ -189,4 +199,39 @@ export interface WorkoutDetail {
 export interface LastSession {
   workout: Workout;
   sets: WorkoutSet[];
+}
+
+/** One completed session in an exercise's history. */
+export interface ExerciseHistorySession {
+  workout: Workout;
+  sets: WorkoutSet[];
+  /** Working-set volume (warm-ups excluded). */
+  volume: number;
+  /** Best Epley e1RM among working sets. */
+  bestE1rm: number;
+  /** Heaviest working-set weight in the session. */
+  topWeight: number;
+}
+
+/** Per-exercise history with lifetime bests. */
+export interface ExerciseHistory {
+  exercise: Exercise;
+  /** Sessions, most-recent first. */
+  sessions: ExerciseHistorySession[];
+  bestWeight: number;
+  bestReps: number;
+  bestE1rm: number;
+  bestSetVolume: number;
+  bestWorkoutVolume: number;
+  lifetimeVolume: number;
+}
+
+/** Everything the post-workout summary screen needs. */
+export interface WorkoutSummaryData {
+  workout: Workout;
+  exerciseCount: number;
+  workingSetCount: number;
+  totalVolume: number;
+  vsLast: VsLastResult;
+  newPRs: PersonalRecord[];
 }

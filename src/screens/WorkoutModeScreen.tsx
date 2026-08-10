@@ -118,7 +118,7 @@ export function WorkoutModeScreen() {
 
   async function finish() {
     await repository.completeWorkout(workoutId);
-    navigate('/workout');
+    navigate(`/summary/${workoutId}`);
   }
 
   async function discard() {

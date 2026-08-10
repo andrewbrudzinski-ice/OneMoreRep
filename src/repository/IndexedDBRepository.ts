@@ -5,6 +5,8 @@ import {
   LOCAL_USER_ID,
   type Exercise,
   type MuscleGroup,
+  type PersonalRecord,
+  type PRType,
   type Routine,
   type RoutineExercise,
   type Settings,
@@ -14,6 +16,8 @@ import {
   type WorkoutSet,
 } from '../types';
 import type {
+  ExerciseHistory,
+  ExerciseHistorySession,
   LastSession,
   NewExerciseInput,
   NewRoutineInput,
@@ -27,7 +31,11 @@ import type {
   WorkoutDetail,
   WorkoutExerciseWithSets,
   WorkoutPatch,
+  WorkoutSummaryData,
 } from './Repository';
+import { bestE1RM, workingVolume } from '../lib/beatLastTime';
+import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
+import { summarizeVsLast } from '../lib/workoutSummary';
 
 /**
  * IndexedDB-backed repository (via Dexie). This is the v1 implementation of
@@ -421,6 +429,9 @@ export class IndexedDBRepository implements Repository {
   async completeWorkout(id: string): Promise<Workout> {
     const current = await this.db.workouts.get(id);
     if (!current) throw new Error(`Workout ${id} not found`);
+    // Guard: don't re-close (and re-detect PRs for) an already-finished session.
+    if (current.completed_at !== null) return current;
+
     const completedAt = nowISO();
     const duration = Math.max(
       0,
@@ -433,7 +444,63 @@ export class IndexedDBRepository implements Repository {
       updated_at: completedAt,
     };
     await this.db.workouts.put(next);
+    await this.detectAndSaveWorkoutPRs(id, completedAt);
     return next;
+  }
+
+  /** Detect PRs from a completed workout and cache them to personal_records. */
+  private async detectAndSaveWorkoutPRs(workoutId: string, achievedAt: string): Promise<void> {
+    const wex = await this.db.workout_exercises.where('workout_id').equals(workoutId).toArray();
+
+    // Group this session's sets by exercise (usually one row per exercise).
+    const setsByExercise = new Map<string, WorkoutSet[]>();
+    for (const row of wex) {
+      const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+      const list = setsByExercise.get(row.exercise_id) ?? [];
+      list.push(...sets);
+      setsByExercise.set(row.exercise_id, list);
+    }
+
+    const newRecords: PersonalRecord[] = [];
+    for (const [exerciseId, sets] of setsByExercise) {
+      const candidates = exercisePRCandidates(sets);
+
+      // Best value seen so far per type (all existing records predate this).
+      const existingRows = await this.db.personal_records
+        .where('exercise_id')
+        .equals(exerciseId)
+        .toArray();
+      const existingBest: Partial<Record<PRType, number>> = {};
+      for (const row of existingRows) {
+        const prior = existingBest[row.pr_type];
+        if (prior === undefined || row.value > prior) existingBest[row.pr_type] = row.value;
+      }
+
+      for (const pr of detectPRs(candidates, existingBest)) {
+        // Best-effort: link the triggering set by matching weight+reps.
+        const match = sets.find(
+          (s) => !s.is_warmup && s.is_completed && s.weight === pr.weight && s.reps === pr.reps,
+        );
+        newRecords.push({
+          id: newId(),
+          user_id: LOCAL_USER_ID,
+          exercise_id: exerciseId,
+          pr_type: pr.pr_type,
+          value: pr.value,
+          weight: pr.weight,
+          reps: pr.reps,
+          achieved_at: achievedAt,
+          set_id: match?.id ?? null,
+          previous_value: pr.previous_value,
+          created_at: achievedAt,
+          updated_at: achievedAt,
+        });
+      }
+    }
+
+    if (newRecords.length > 0) {
+      await this.db.personal_records.bulkAdd(newRecords);
+    }
   }
 
   async cancelWorkout(id: string): Promise<void> {
@@ -569,6 +636,152 @@ export class IndexedDBRepository implements Repository {
 
   async removeSet(id: string): Promise<void> {
     await this.db.sets.delete(id);
+  }
+
+  // --- History, PRs & summary ------------------------------------------------
+
+  async getPersonalRecords(options?: { exerciseId?: string }): Promise<PersonalRecord[]> {
+    const rows = options?.exerciseId
+      ? await this.db.personal_records.where('exercise_id').equals(options.exerciseId).toArray()
+      : await this.db.personal_records.toArray();
+    return rows.sort((a, b) => b.achieved_at.localeCompare(a.achieved_at));
+  }
+
+  async getExerciseHistory(exerciseId: string): Promise<ExerciseHistory | undefined> {
+    const exercise = await this.db.exercises.get(exerciseId);
+    if (!exercise) return undefined;
+
+    const rows = await this.db.workout_exercises.where('exercise_id').equals(exerciseId).toArray();
+    const byWorkout = new Map<string, WorkoutExercise[]>();
+    for (const row of rows) {
+      const list = byWorkout.get(row.workout_id) ?? [];
+      list.push(row);
+      byWorkout.set(row.workout_id, list);
+    }
+
+    const workouts = await this.db.workouts.bulkGet([...byWorkout.keys()]);
+    const sessions: ExerciseHistorySession[] = [];
+    for (const workout of workouts) {
+      if (!workout || workout.completed_at === null) continue;
+      const rowIds = (byWorkout.get(workout.id) ?? []).map((r) => r.id);
+      const sets: WorkoutSet[] = [];
+      for (const rowId of rowIds) {
+        sets.push(...(await this.db.sets.where('workout_exercise_id').equals(rowId).toArray()));
+      }
+      sets.sort((a, b) => a.set_number - b.set_number);
+      const working = sets.filter((s) => !s.is_warmup && s.is_completed);
+      sessions.push({
+        workout,
+        sets,
+        volume: workingVolume(sets),
+        bestE1rm: bestE1RM(sets),
+        topWeight: working.reduce((max, s) => Math.max(max, s.weight), 0),
+      });
+    }
+
+    sessions.sort((a, b) =>
+      (b.workout.completed_at ?? '').localeCompare(a.workout.completed_at ?? ''),
+    );
+
+    let bestWeight = 0;
+    let bestReps = 0;
+    let bestE1rm = 0;
+    let bestSetVolume = 0;
+    let bestWorkoutVolume = 0;
+    let lifetimeVolume = 0;
+    for (const session of sessions) {
+      lifetimeVolume += session.volume;
+      bestWorkoutVolume = Math.max(bestWorkoutVolume, session.volume);
+      bestE1rm = Math.max(bestE1rm, session.bestE1rm);
+      for (const s of session.sets) {
+        if (s.is_warmup || !s.is_completed) continue;
+        bestWeight = Math.max(bestWeight, s.weight);
+        bestReps = Math.max(bestReps, s.reps);
+        bestSetVolume = Math.max(bestSetVolume, s.weight * s.reps);
+      }
+    }
+
+    return {
+      exercise,
+      sessions,
+      bestWeight,
+      bestReps,
+      bestE1rm,
+      bestSetVolume,
+      bestWorkoutVolume,
+      lifetimeVolume,
+    };
+  }
+
+  async getWorkoutSummary(workoutId: string): Promise<WorkoutSummaryData | undefined> {
+    const detail = await this.getWorkoutDetail(workoutId);
+    if (!detail) return undefined;
+    const { workout, exercises } = detail;
+
+    let workingSetCount = 0;
+    let totalVolume = 0;
+    for (const ex of exercises) {
+      for (const s of ex.sets) {
+        if (!s.is_warmup && s.is_completed) {
+          workingSetCount += 1;
+          totalVolume += s.weight * s.reps;
+        }
+      }
+    }
+
+    // Comparable prior sessions: same routine if set, else same name.
+    const allCompleted = (await this.db.workouts.toArray())
+      .filter((w) => w.completed_at !== null && w.id !== workoutId)
+      .filter((w) =>
+        workout.routine_id ? w.routine_id === workout.routine_id : w.name === workout.name,
+      )
+      .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''));
+
+    const priorVolumes: number[] = [];
+    for (const w of allCompleted.slice(0, 3)) {
+      priorVolumes.push(await this.computeWorkoutVolume(w.id));
+    }
+    const lastVolume = priorVolumes.length > 0 ? priorVolumes[0]! : null;
+    const recentAverage =
+      priorVolumes.length > 0
+        ? priorVolumes.reduce((a, b) => a + b, 0) / priorVolumes.length
+        : null;
+
+    const vsLast = summarizeVsLast({
+      intent: workout.intent,
+      currentVolume: totalVolume,
+      lastVolume,
+      recentAverage,
+    });
+
+    const newPRs =
+      workout.completed_at === null
+        ? []
+        : (await this.db.personal_records.toArray())
+            .filter((pr) => pr.achieved_at === workout.completed_at)
+            .sort((a, b) => a.pr_type.localeCompare(b.pr_type));
+
+    return {
+      workout,
+      exerciseCount: exercises.length,
+      workingSetCount,
+      totalVolume,
+      vsLast,
+      newPRs,
+    };
+  }
+
+  /** Total completed working-set volume for a workout. */
+  private async computeWorkoutVolume(workoutId: string): Promise<number> {
+    const wex = await this.db.workout_exercises.where('workout_id').equals(workoutId).toArray();
+    let total = 0;
+    for (const row of wex) {
+      const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+      for (const s of sets) {
+        if (!s.is_warmup && s.is_completed) total += s.weight * s.reps;
+      }
+    }
+    return total;
   }
 
   async getLastSession(

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import {
   Button,
@@ -188,20 +189,26 @@ function ExerciseDetail({
   onEdit: () => void;
   onArchiveToggle: () => void;
 }) {
+  const navigate = useNavigate();
   return (
     <Modal
       title={exercise.name}
       onClose={onClose}
       footer={
-        <div className="flex justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <Button variant="danger" onClick={onArchiveToggle}>
             {exercise.is_archived ? 'Unarchive' : 'Archive'}
           </Button>
-          {exercise.is_custom && (
-            <Button variant="secondary" onClick={onEdit}>
-              Edit
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => navigate(`/history/${exercise.id}`)}>
+              History
             </Button>
-          )}
+            {exercise.is_custom && (
+              <Button variant="secondary" onClick={onEdit}>
+                Edit
+              </Button>
+            )}
+          </div>
         </div>
       }
     >

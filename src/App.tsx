@@ -1,5 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
+import { Spinner } from './components/ui';
 import { RepositoryProvider } from './repository/RepositoryContext';
 import { useRepositoryContext } from './repository/repositoryContext';
 import { HomeScreen } from './screens/HomeScreen';
@@ -7,9 +9,24 @@ import { WorkoutScreen } from './screens/WorkoutScreen';
 import { RoutineEditorScreen } from './screens/RoutineEditorScreen';
 import { WorkoutModeScreen } from './screens/WorkoutModeScreen';
 import { NutritionScreen } from './screens/NutritionScreen';
-import { ProgressScreen } from './screens/ProgressScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { ExercisesScreen } from './screens/ExercisesScreen';
+
+// Analysis screens pull in Recharts — load them on demand to keep the initial
+// (training-mode) bundle lean.
+const ProgressScreen = lazy(() =>
+  import('./screens/ProgressScreen').then((m) => ({ default: m.ProgressScreen })),
+);
+const ExerciseHistoryScreen = lazy(() =>
+  import('./screens/ExerciseHistoryScreen').then((m) => ({ default: m.ExerciseHistoryScreen })),
+);
+const WorkoutSummaryScreen = lazy(() =>
+  import('./screens/WorkoutSummaryScreen').then((m) => ({ default: m.WorkoutSummaryScreen })),
+);
+
+function Lazy({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<Spinner />}>{children}</Suspense>;
+}
 
 const router = createBrowserRouter([
   {
@@ -20,13 +37,36 @@ const router = createBrowserRouter([
       { path: 'workout', element: <WorkoutScreen /> },
       { path: 'workout/routines/:routineId', element: <RoutineEditorScreen /> },
       { path: 'nutrition', element: <NutritionScreen /> },
-      { path: 'progress', element: <ProgressScreen /> },
+      {
+        path: 'progress',
+        element: (
+          <Lazy>
+            <ProgressScreen />
+          </Lazy>
+        ),
+      },
       { path: 'more', element: <MoreScreen /> },
       { path: 'more/exercises', element: <ExercisesScreen /> },
+      {
+        path: 'history/:exerciseId',
+        element: (
+          <Lazy>
+            <ExerciseHistoryScreen />
+          </Lazy>
+        ),
+      },
     ],
   },
-  // Workout Mode is full-screen (no tab bar) — the focused logging surface.
+  // Workout Mode + summary are full-screen (no tab bar).
   { path: '/session/:workoutId', element: <WorkoutModeScreen /> },
+  {
+    path: '/summary/:workoutId',
+    element: (
+      <Lazy>
+        <WorkoutSummaryScreen />
+      </Lazy>
+    ),
+  },
 ]);
 
 /** Gate the app on the repository being seeded/ready. */

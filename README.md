@@ -72,7 +72,14 @@ Built in phases per the product spec; each phase is checked before the next.
       suppression, warm-up exclusion) and the **plate calculator** are pure
       and exhaustively unit-tested. Inline plate calc + non-blocking rest
       timer (Pause / +30s / Skip, gentle buzz at zero).
-- [ ] Phase 3 — History, PRs, Workout Summary
+- [x] **Phase 3 — History, PRs, Workout Summary.** Auto **PR detection** on
+      completion across all five pr_types, cached to `personal_records` with
+      `previous_value` (pure & unit-tested; warm-ups excluded). Post-workout
+      **summary**: duration, exercise/working-set counts, total volume,
+      deload-aware **vs-last %** wording, and new PRs. **Exercise history**:
+      lifetime bests, per-session breakdown, and e1RM / volume / top-weight
+      **charts** (Recharts, code-split). **Progress** page: PR feed + per-exercise
+      trend links.
 - [ ] Phase 4 — Nutrition
 - [ ] Phase 5 — Bodyweight, Dashboard, Analytics
 - [ ] Phase 6 — Export/Import + polish
