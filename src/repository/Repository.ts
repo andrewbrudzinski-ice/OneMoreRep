@@ -1,6 +1,9 @@
 import type {
+  DayOfWeek,
   Exercise,
   MuscleGroup,
+  Routine,
+  RoutineExercise,
   Settings,
   User,
 } from '../types';
@@ -35,6 +38,26 @@ export interface Repository {
   createExercise(input: NewExerciseInput): Promise<Exercise>;
   updateExercise(id: string, patch: Partial<NewExerciseInput>): Promise<Exercise>;
   setExerciseArchived(id: string, archived: boolean): Promise<Exercise>;
+
+  // --- Routines ------------------------------------------------------------
+  getRoutines(): Promise<Routine[]>;
+  getRoutine(id: string): Promise<Routine | undefined>;
+  getRoutineDetail(id: string): Promise<RoutineDetail | undefined>;
+  createRoutine(input: NewRoutineInput): Promise<Routine>;
+  updateRoutine(id: string, patch: Partial<NewRoutineInput>): Promise<Routine>;
+  deleteRoutine(id: string): Promise<void>;
+  duplicateRoutine(id: string): Promise<Routine>;
+
+  // Routine exercises (children of a routine)
+  addRoutineExercise(
+    routineId: string,
+    exerciseId: string,
+    input?: RoutineExerciseInput,
+  ): Promise<RoutineExercise>;
+  updateRoutineExercise(id: string, patch: RoutineExerciseInput): Promise<RoutineExercise>;
+  removeRoutineExercise(id: string): Promise<void>;
+  /** Persist a new order for a routine's exercises (ids in desired order). */
+  reorderRoutineExercises(routineId: string, orderedIds: string[]): Promise<void>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
@@ -54,4 +77,30 @@ export interface NewExerciseInput {
   movement_type: Exercise['movement_type'];
   is_compound?: boolean;
   instructions?: string;
+}
+
+/** Shape for creating/editing a routine (repository fills the base fields). */
+export interface NewRoutineInput {
+  name: string;
+  notes?: string;
+  day_of_week?: DayOfWeek;
+}
+
+/** Editable fields on a routine exercise (targets + notes). */
+export interface RoutineExerciseInput {
+  target_sets?: number;
+  target_reps_low?: number;
+  target_reps_high?: number;
+  notes?: string;
+}
+
+/** A routine exercise joined with its resolved Exercise (may be missing). */
+export interface RoutineExerciseWithExercise extends RoutineExercise {
+  exercise: Exercise | undefined;
+}
+
+/** A routine plus its ordered, exercise-resolved children. */
+export interface RoutineDetail {
+  routine: Routine;
+  items: RoutineExerciseWithExercise[];
 }

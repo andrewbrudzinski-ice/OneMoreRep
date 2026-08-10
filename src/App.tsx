@@ -4,9 +4,11 @@ import { RepositoryProvider } from './repository/RepositoryContext';
 import { useRepositoryContext } from './repository/repositoryContext';
 import { HomeScreen } from './screens/HomeScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
+import { RoutineEditorScreen } from './screens/RoutineEditorScreen';
 import { NutritionScreen } from './screens/NutritionScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { MoreScreen } from './screens/MoreScreen';
+import { ExercisesScreen } from './screens/ExercisesScreen';
 
 const router = createBrowserRouter([
   {
@@ -15,9 +17,11 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <HomeScreen /> },
       { path: 'workout', element: <WorkoutScreen /> },
+      { path: 'workout/routines/:routineId', element: <RoutineEditorScreen /> },
       { path: 'nutrition', element: <NutritionScreen /> },
       { path: 'progress', element: <ProgressScreen /> },
       { path: 'more', element: <MoreScreen /> },
+      { path: 'more/exercises', element: <ExercisesScreen /> },
     ],
   },
 ]);

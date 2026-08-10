@@ -1,8 +1,23 @@
 import { FitnessDB, db as sharedDb } from '../db/database';
 import { seedDatabase, SETTINGS_ID } from '../db/seed';
 import { newId, nowISO } from '../lib/id';
-import { LOCAL_USER_ID, type Exercise, type MuscleGroup, type Settings, type User } from '../types';
-import type { NewExerciseInput, Repository } from './Repository';
+import {
+  LOCAL_USER_ID,
+  type Exercise,
+  type MuscleGroup,
+  type Routine,
+  type RoutineExercise,
+  type Settings,
+  type User,
+} from '../types';
+import type {
+  NewExerciseInput,
+  NewRoutineInput,
+  Repository,
+  RoutineDetail,
+  RoutineExerciseInput,
+  RoutineExerciseWithExercise,
+} from './Repository';
 
 /**
  * IndexedDB-backed repository (via Dexie). This is the v1 implementation of
@@ -121,6 +136,180 @@ export class IndexedDBRepository implements Repository {
     const next: Exercise = { ...current, is_archived: archived, updated_at: nowISO() };
     await this.db.exercises.put(next);
     return next;
+  }
+
+  // --- Routines --------------------------------------------------------------
+
+  async getRoutines(): Promise<Routine[]> {
+    const routines = await this.db.routines.toArray();
+    return routines.sort((a, b) => a.sort_order - b.sort_order);
+  }
+
+  async getRoutine(id: string): Promise<Routine | undefined> {
+    return this.db.routines.get(id);
+  }
+
+  async getRoutineDetail(id: string): Promise<RoutineDetail | undefined> {
+    const routine = await this.db.routines.get(id);
+    if (!routine) return undefined;
+    const rows = await this.db.routine_exercises.where('routine_id').equals(id).toArray();
+    rows.sort((a, b) => a.sort_order - b.sort_order);
+    const exerciseIds = [...new Set(rows.map((r) => r.exercise_id))];
+    const exercises = await this.db.exercises.bulkGet(exerciseIds);
+    const byId = new Map<string, Exercise>();
+    for (const ex of exercises) {
+      if (ex) byId.set(ex.id, ex);
+    }
+    const items: RoutineExerciseWithExercise[] = rows.map((row) => ({
+      ...row,
+      exercise: byId.get(row.exercise_id),
+    }));
+    return { routine, items };
+  }
+
+  async createRoutine(input: NewRoutineInput): Promise<Routine> {
+    const ts = nowISO();
+    const maxOrder = await this.nextRoutineSortOrder();
+    const routine: Routine = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      name: input.name,
+      notes: input.notes ?? '',
+      day_of_week: input.day_of_week ?? null,
+      sort_order: maxOrder,
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.routines.add(routine);
+    return routine;
+  }
+
+  async updateRoutine(id: string, patch: Partial<NewRoutineInput>): Promise<Routine> {
+    const current = await this.db.routines.get(id);
+    if (!current) {
+      throw new Error(`Routine ${id} not found`);
+    }
+    const next: Routine = {
+      ...current,
+      name: patch.name ?? current.name,
+      notes: patch.notes ?? current.notes,
+      day_of_week: patch.day_of_week === undefined ? current.day_of_week : patch.day_of_week,
+      updated_at: nowISO(),
+    };
+    await this.db.routines.put(next);
+    return next;
+  }
+
+  async deleteRoutine(id: string): Promise<void> {
+    await this.db.transaction('rw', this.db.routines, this.db.routine_exercises, async () => {
+      await this.db.routine_exercises.where('routine_id').equals(id).delete();
+      await this.db.routines.delete(id);
+    });
+  }
+
+  async duplicateRoutine(id: string): Promise<Routine> {
+    const detail = await this.getRoutineDetail(id);
+    if (!detail) {
+      throw new Error(`Routine ${id} not found`);
+    }
+    const ts = nowISO();
+    const newRoutineId = newId();
+    const copy: Routine = {
+      ...detail.routine,
+      id: newRoutineId,
+      name: `${detail.routine.name} (copy)`,
+      sort_order: await this.nextRoutineSortOrder(),
+      created_at: ts,
+      updated_at: ts,
+    };
+    const childRows: RoutineExercise[] = detail.items.map((item, index) => ({
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      routine_id: newRoutineId,
+      exercise_id: item.exercise_id,
+      sort_order: index,
+      target_sets: item.target_sets,
+      target_reps_low: item.target_reps_low,
+      target_reps_high: item.target_reps_high,
+      notes: item.notes,
+      created_at: ts,
+      updated_at: ts,
+    }));
+    await this.db.transaction('rw', this.db.routines, this.db.routine_exercises, async () => {
+      await this.db.routines.add(copy);
+      if (childRows.length > 0) {
+        await this.db.routine_exercises.bulkAdd(childRows);
+      }
+    });
+    return copy;
+  }
+
+  async addRoutineExercise(
+    routineId: string,
+    exerciseId: string,
+    input?: RoutineExerciseInput,
+  ): Promise<RoutineExercise> {
+    const ts = nowISO();
+    const existing = await this.db.routine_exercises.where('routine_id').equals(routineId).toArray();
+    const nextOrder = existing.reduce((max, r) => Math.max(max, r.sort_order + 1), 0);
+    const row: RoutineExercise = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      routine_id: routineId,
+      exercise_id: exerciseId,
+      sort_order: nextOrder,
+      target_sets: input?.target_sets ?? 3,
+      target_reps_low: input?.target_reps_low ?? 8,
+      target_reps_high: input?.target_reps_high ?? 12,
+      notes: input?.notes ?? '',
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.routine_exercises.add(row);
+    return row;
+  }
+
+  async updateRoutineExercise(id: string, patch: RoutineExerciseInput): Promise<RoutineExercise> {
+    const current = await this.db.routine_exercises.get(id);
+    if (!current) {
+      throw new Error(`Routine exercise ${id} not found`);
+    }
+    const next: RoutineExercise = {
+      ...current,
+      target_sets: patch.target_sets ?? current.target_sets,
+      target_reps_low: patch.target_reps_low ?? current.target_reps_low,
+      target_reps_high: patch.target_reps_high ?? current.target_reps_high,
+      notes: patch.notes ?? current.notes,
+      updated_at: nowISO(),
+    };
+    await this.db.routine_exercises.put(next);
+    return next;
+  }
+
+  async removeRoutineExercise(id: string): Promise<void> {
+    await this.db.routine_exercises.delete(id);
+  }
+
+  async reorderRoutineExercises(routineId: string, orderedIds: string[]): Promise<void> {
+    const ts = nowISO();
+    await this.db.transaction('rw', this.db.routine_exercises, async () => {
+      const rows = await this.db.routine_exercises.where('routine_id').equals(routineId).toArray();
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      let order = 0;
+      for (const id of orderedIds) {
+        const row = byId.get(id);
+        if (row) {
+          await this.db.routine_exercises.put({ ...row, sort_order: order, updated_at: ts });
+          order += 1;
+        }
+      }
+    });
+  }
+
+  /** Next sort_order for a new routine (append to end). */
+  private async nextRoutineSortOrder(): Promise<number> {
+    const routines = await this.db.routines.toArray();
+    return routines.reduce((max, r) => Math.max(max, r.sort_order + 1), 0);
   }
 }
 

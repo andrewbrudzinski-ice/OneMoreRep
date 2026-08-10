@@ -56,7 +56,12 @@ Built in phases per the product spec; each phase is checked before the next.
       Dexie schema, Repository interface + IndexedDB implementation, idempotent
       seeding (11 muscle groups, 56 exercises, default settings, `local-user`),
       app shell (bottom tab bar / sidebar, 5 tabs, routing), PWA registration.
-- [ ] Phase 1 — Exercises & Routines
+- [x] **Phase 1 — Exercises & Routines.** Exercise database with instant
+      search, muscle-group filter, detail view, add/edit custom exercises, and
+      archive. Routine CRUD: create/edit, add/remove/reorder exercises, per-set
+      targets & rep ranges, notes, and duplicate. Pure search + reorder logic
+      unit-tested; routine round-trips (incl. reorder & deep-copy duplicate)
+      tested through the repository.
 - [ ] Phase 2 — Workout Mode + Beat Last Time
 - [ ] Phase 3 — History, PRs, Workout Summary
 - [ ] Phase 4 — Nutrition
