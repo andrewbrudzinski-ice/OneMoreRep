@@ -86,6 +86,14 @@ Built in phases per the product spec; each phase is checked before the next.
       past entries — unit-proven); edit servings / delete entries inline;
       quick-add a saved meal; live daily totals vs targets as **4 macro rings +
       a fiber bar**; per-day navigation.
-- [ ] Phase 5 — Bodyweight, Dashboard, Analytics
+- [x] **Phase 5 — Bodyweight, Dashboard, Analytics.** Bodyweight entry
+      (one weigh-in/day, upsert) with a **7/30-day rolling-average** chart and
+      stats (current, start, change, avg, high, low). Fixed **Dashboard**:
+      today's workout, bodyweight + trend sparkline, macro rings, this-week
+      count + streak, recent PRs, weekly volume — assembled repository-side.
+      **Progress** analytics: workout frequency (14-day activity), current /
+      longest streak, and 7-day macro consistency. Rolling-average and streak
+      math are pure & unit-tested; Home uses inline SVG sparklines to stay off
+      the Recharts bundle.
 - [ ] Phase 6 — Export/Import + polish
 - [ ] Phase 7 — Should-haves (Readiness, heatmap, RPE auto-regulation)

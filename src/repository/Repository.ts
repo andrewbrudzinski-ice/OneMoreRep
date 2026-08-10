@@ -1,4 +1,5 @@
 import type {
+  BodyWeightEntry,
   DateString,
   DayOfWeek,
   Exercise,
@@ -139,6 +140,20 @@ export interface Repository {
   addMealToDay(date: DateString, mealId: string, mealType: MealType): Promise<FoodEntry[]>;
   updateFoodEntry(id: string, patch: FoodEntryPatch): Promise<FoodEntry>;
   removeFoodEntry(id: string): Promise<void>;
+
+  // --- Bodyweight ----------------------------------------------------------
+  /** Entries ascending by date. */
+  getBodyWeightEntries(): Promise<BodyWeightEntry[]>;
+  /** Upsert the entry for a date (one weigh-in per day). */
+  addBodyWeightEntry(input: NewBodyWeightInput): Promise<BodyWeightEntry>;
+  updateBodyWeightEntry(id: string, patch: Partial<NewBodyWeightInput>): Promise<BodyWeightEntry>;
+  deleteBodyWeightEntry(id: string): Promise<void>;
+  getBodyWeightStats(): Promise<BodyWeightStats>;
+
+  // --- Dashboard -----------------------------------------------------------
+  getDashboardData(): Promise<DashboardData>;
+  /** Analytics for the Progress page: frequency, streaks, macro consistency. */
+  getProgressStats(): Promise<ProgressStats>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
@@ -324,4 +339,73 @@ export interface NutritionDay {
   entries: FoodEntryWithFood[];
   byMeal: Record<MealType, FoodEntryWithFood[]>;
   totals: MacroTotals;
+}
+
+// --- Bodyweight & dashboard ------------------------------------------------
+
+export interface NewBodyWeightInput {
+  date: DateString;
+  weight: number;
+  note?: string;
+}
+
+export interface BodyWeightStats {
+  current: number | null;
+  start: number | null;
+  change: number | null;
+  avg7: number | null;
+  avg30: number | null;
+  high: number | null;
+  low: number | null;
+  count: number;
+}
+
+/** A PR joined with its exercise name for the dashboard/feed. */
+export interface PersonalRecordView {
+  record: PersonalRecord;
+  exerciseName: string;
+}
+
+/** Fixed dashboard payload — assembled server-side (repository-side) so the
+ * Home screen just renders. */
+export interface DashboardData {
+  userName: string;
+  settings: Settings;
+  activeWorkout: Workout | null;
+  suggestedRoutine: Routine | null;
+  todayTotals: MacroTotals;
+  bodyweight: {
+    latest: BodyWeightEntry | null;
+    changeFromStart: number | null;
+    avg7: number | null;
+    /** Recent weights (oldest→newest) for a sparkline. */
+    sparkline: number[];
+  };
+  week: {
+    workoutsThisWeek: number;
+    streak: number;
+  };
+  recentPRs: PersonalRecordView[];
+  /** Working volume over the last 7 days. */
+  weeklyVolume: number;
+  /** Per-day working volume for the last 7 days (oldest→newest). */
+  volumeSparkline: number[];
+}
+
+/** Analytics for the Progress page. */
+export interface ProgressStats {
+  currentStreak: number;
+  longestStreak: number;
+  workoutsThisWeek: number;
+  totalWorkouts: number;
+  /** 0/1 per day for the last 14 days (oldest→newest). */
+  activityLast14: number[];
+  macroConsistency: {
+    /** Days in the last 7 with any food logged. */
+    daysLogged: number;
+    /** Of those, days that met the protein target. */
+    proteinMet: number;
+    /** Of those, days within ±10% of the calorie target. */
+    calorieMet: number;
+  };
 }

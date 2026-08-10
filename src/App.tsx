@@ -25,6 +25,9 @@ const ExerciseHistoryScreen = lazy(() =>
 const WorkoutSummaryScreen = lazy(() =>
   import('./screens/WorkoutSummaryScreen').then((m) => ({ default: m.WorkoutSummaryScreen })),
 );
+const BodyweightScreen = lazy(() =>
+  import('./screens/BodyweightScreen').then((m) => ({ default: m.BodyweightScreen })),
+);
 
 function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<Spinner />}>{children}</Suspense>;
@@ -56,6 +59,14 @@ const router = createBrowserRouter([
         element: (
           <Lazy>
             <ExerciseHistoryScreen />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'bodyweight',
+        element: (
+          <Lazy>
+            <BodyweightScreen />
           </Lazy>
         ),
       },

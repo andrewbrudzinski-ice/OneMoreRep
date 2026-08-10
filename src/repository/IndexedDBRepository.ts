@@ -3,6 +3,7 @@ import { seedDatabase, SETTINGS_ID } from '../db/seed';
 import { newId, nowISO } from '../lib/id';
 import {
   LOCAL_USER_ID,
+  type BodyWeightEntry,
   type DateString,
   type Exercise,
   type Food,
@@ -23,6 +24,9 @@ import {
   type WorkoutSet,
 } from '../types';
 import type {
+  BodyWeightStats,
+  DashboardData,
+  ProgressStats,
   ExerciseHistory,
   ExerciseHistorySession,
   FoodEntryInput,
@@ -31,6 +35,7 @@ import type {
   LastSession,
   MealDetail,
   MealItemWithFood,
+  NewBodyWeightInput,
   NewExerciseInput,
   NewFoodInput,
   NewMealInput,
@@ -38,6 +43,7 @@ import type {
   NewSetInput,
   NewWorkoutInput,
   NutritionDay,
+  PersonalRecordView,
   Repository,
   RoutineDetail,
   RoutineExerciseInput,
@@ -52,6 +58,10 @@ import { bestE1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
 import { summarizeVsLast } from '../lib/workoutSummary';
 import { sumEntries, type MacroTotals, ZERO_MACROS } from '../lib/nutrition';
+import { averageWithinDays } from '../lib/rollingAverage';
+import { countInLastDays, currentStreak, longestStreak } from '../lib/streak';
+import { addDays, dayDiff } from '../lib/dates';
+import { todayDateString } from '../lib/id';
 
 /**
  * IndexedDB-backed repository (via Dexie). This is the v1 implementation of
@@ -1089,6 +1099,218 @@ export class IndexedDBRepository implements Repository {
 
   async removeFoodEntry(id: string): Promise<void> {
     await this.db.food_entries.delete(id);
+  }
+
+  // --- Bodyweight ------------------------------------------------------------
+
+  async getBodyWeightEntries(): Promise<BodyWeightEntry[]> {
+    const entries = await this.db.body_weight_entries.toArray();
+    return entries.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async addBodyWeightEntry(input: NewBodyWeightInput): Promise<BodyWeightEntry> {
+    // One weigh-in per day — upsert on date.
+    const existing = await this.db.body_weight_entries.where('date').equals(input.date).first();
+    if (existing) {
+      return this.updateBodyWeightEntry(existing.id, input);
+    }
+    const ts = nowISO();
+    const entry: BodyWeightEntry = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      date: input.date,
+      weight: input.weight,
+      note: input.note ?? '',
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.body_weight_entries.add(entry);
+    return entry;
+  }
+
+  async updateBodyWeightEntry(
+    id: string,
+    patch: Partial<NewBodyWeightInput>,
+  ): Promise<BodyWeightEntry> {
+    const current = await this.db.body_weight_entries.get(id);
+    if (!current) throw new Error(`Body weight entry ${id} not found`);
+    const next: BodyWeightEntry = {
+      ...current,
+      date: patch.date ?? current.date,
+      weight: patch.weight ?? current.weight,
+      note: patch.note ?? current.note,
+      updated_at: nowISO(),
+    };
+    await this.db.body_weight_entries.put(next);
+    return next;
+  }
+
+  async deleteBodyWeightEntry(id: string): Promise<void> {
+    await this.db.body_weight_entries.delete(id);
+  }
+
+  async getBodyWeightStats(): Promise<BodyWeightStats> {
+    const entries = await this.getBodyWeightEntries();
+    if (entries.length === 0) {
+      return {
+        current: null,
+        start: null,
+        change: null,
+        avg7: null,
+        avg30: null,
+        high: null,
+        low: null,
+        count: 0,
+      };
+    }
+    const points = entries.map((e) => ({ date: e.date, value: e.weight }));
+    const weights = entries.map((e) => e.weight);
+    const current = entries[entries.length - 1]!.weight;
+    const start = entries[0]!.weight;
+    const asOf = entries[entries.length - 1]!.date;
+    return {
+      current,
+      start,
+      change: current - start,
+      avg7: averageWithinDays(points, 7, asOf),
+      avg30: averageWithinDays(points, 30, asOf),
+      high: Math.max(...weights),
+      low: Math.min(...weights),
+      count: entries.length,
+    };
+  }
+
+  // --- Dashboard -------------------------------------------------------------
+
+  async getDashboardData(): Promise<DashboardData> {
+    const today = todayDateString();
+    const [user, settings, entries, allWorkouts, routines, prRows] = await Promise.all([
+      this.getCurrentUser(),
+      this.getSettings(),
+      this.getBodyWeightEntries(),
+      this.db.workouts.toArray(),
+      this.getRoutines(),
+      this.db.personal_records.toArray(),
+    ]);
+
+    const completed = allWorkouts.filter((w) => w.completed_at !== null);
+    const activeWorkout = (await this.getActiveWorkout()) ?? null;
+
+    // Suggested routine: today's day-of-week match, else the first routine.
+    const dow = new Date(`${today}T00:00:00`).getDay();
+    const suggestedRoutine =
+      routines.find((r) => r.day_of_week === dow) ?? routines[0] ?? null;
+
+    // Today's macros.
+    const todayTotals = (await this.getNutritionDay(today)).totals;
+
+    // Bodyweight card.
+    const bwPoints = entries.map((e) => ({ date: e.date, value: e.weight }));
+    const latest = entries[entries.length - 1] ?? null;
+    const bodyweight = {
+      latest,
+      changeFromStart: latest && entries[0] ? latest.weight - entries[0].weight : null,
+      avg7: latest ? averageWithinDays(bwPoints, 7, latest.date) : null,
+      sparkline: entries.slice(-14).map((e) => e.weight),
+    };
+
+    // Week: streak + count from completed-workout days.
+    const workoutDays = completed
+      .map((w) => (w.completed_at ?? w.started_at).slice(0, 10))
+      .filter((d): d is string => !!d);
+    const week = {
+      workoutsThisWeek: countInLastDays(workoutDays, 7, today),
+      streak: currentStreak(workoutDays, today),
+    };
+
+    // Weekly volume + per-day sparkline (last 7 days).
+    const volumeByDay = new Map<string, number>();
+    for (const w of completed) {
+      const day = (w.completed_at ?? '').slice(0, 10);
+      if (!day || dayDiff(today, day) < 0 || dayDiff(today, day) >= 7) continue;
+      volumeByDay.set(day, (volumeByDay.get(day) ?? 0) + (await this.computeWorkoutVolume(w.id)));
+    }
+    const volumeSparkline: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(`${today}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - i);
+      volumeSparkline.push(volumeByDay.get(d.toISOString().slice(0, 10)) ?? 0);
+    }
+    const weeklyVolume = volumeSparkline.reduce((a, b) => a + b, 0);
+
+    // Recent PRs (top 5) with names.
+    const exerciseNames = new Map<string, string>();
+    const sortedPRs = prRows
+      .sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
+      .slice(0, 5);
+    for (const pr of sortedPRs) {
+      if (!exerciseNames.has(pr.exercise_id)) {
+        const ex = await this.db.exercises.get(pr.exercise_id);
+        exerciseNames.set(pr.exercise_id, ex?.name ?? 'Exercise');
+      }
+    }
+    const recentPRs: PersonalRecordView[] = sortedPRs.map((record) => ({
+      record,
+      exerciseName: exerciseNames.get(record.exercise_id) ?? 'Exercise',
+    }));
+
+    return {
+      userName: user.name,
+      settings,
+      activeWorkout,
+      suggestedRoutine,
+      todayTotals,
+      bodyweight,
+      week,
+      recentPRs,
+      weeklyVolume,
+      volumeSparkline,
+    };
+  }
+
+  async getProgressStats(): Promise<ProgressStats> {
+    const today = todayDateString();
+    const [settings, allWorkouts] = await Promise.all([
+      this.getSettings(),
+      this.db.workouts.toArray(),
+    ]);
+    const completed = allWorkouts.filter((w) => w.completed_at !== null);
+    const workoutDays = completed
+      .map((w) => (w.completed_at ?? w.started_at).slice(0, 10))
+      .filter((d): d is string => !!d);
+    const daySet = new Set(workoutDays);
+
+    const activityLast14: number[] = [];
+    for (let i = 13; i >= 0; i--) {
+      activityLast14.push(daySet.has(addDays(today, -i)) ? 1 : 0);
+    }
+
+    // Macro consistency over the last 7 days.
+    let daysLogged = 0;
+    let proteinMet = 0;
+    let calorieMet = 0;
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(today, -i);
+      const totals = (await this.getNutritionDay(date)).totals;
+      if (totals.calories <= 0) continue;
+      daysLogged += 1;
+      if (settings.protein_target && totals.protein >= settings.protein_target) proteinMet += 1;
+      if (
+        settings.calorie_target &&
+        Math.abs(totals.calories - settings.calorie_target) <= settings.calorie_target * 0.1
+      ) {
+        calorieMet += 1;
+      }
+    }
+
+    return {
+      currentStreak: currentStreak(workoutDays, today),
+      longestStreak: longestStreak(workoutDays),
+      workoutsThisWeek: countInLastDays(workoutDays, 7, today),
+      totalWorkouts: completed.length,
+      activityLast14,
+      macroConsistency: { daysLogged, proteinMet, calorieMet },
+    };
   }
 }
 

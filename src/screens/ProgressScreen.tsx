@@ -5,6 +5,7 @@ import { EmptyState, Spinner } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
+import type { ProgressStats } from '../repository/Repository';
 import type { Exercise, PersonalRecord, Settings } from '../types';
 
 export function ProgressScreen() {
@@ -12,12 +13,13 @@ export function ProgressScreen() {
   const navigate = useNavigate();
 
   const state = useAsync(async () => {
-    const [prs, exercises, settings] = await Promise.all([
+    const [prs, exercises, settings, stats] = await Promise.all([
       repository.getPersonalRecords(),
       repository.getExercises({ includeArchived: true }),
       repository.getSettings(),
+      repository.getProgressStats(),
     ]);
-    return { prs, exercises, settings };
+    return { prs, exercises, settings, stats };
   }, []);
 
   const exerciseById = useMemo(() => {
@@ -40,11 +42,14 @@ export function ProgressScreen() {
   const prs = state.data?.prs ?? [];
   const unit = state.data?.settings.units ?? 'lbs';
 
+  const stats = state.data?.stats;
+  const nothingYet = prs.length === 0 && (stats?.totalWorkouts ?? 0) === 0;
+
   return (
     <>
       <ScreenHeader title="Progress" subtitle="History & personal records" />
 
-      {prs.length === 0 ? (
+      {nothingYet ? (
         <EmptyState
           icon="📈"
           title="No progress yet"
@@ -52,6 +57,9 @@ export function ProgressScreen() {
         />
       ) : (
         <div className="space-y-6 p-4">
+          {stats && <ConsistencySection stats={stats} />}
+
+          {prs.length > 0 && (
           <section>
             <h2 className="mb-2 text-sm font-semibold text-slate-300">Recent PRs</h2>
             <ul className="space-y-2">
@@ -75,7 +83,9 @@ export function ProgressScreen() {
               ))}
             </ul>
           </section>
+          )}
 
+          {trackedExercises.length > 0 && (
           <section>
             <h2 className="mb-2 text-sm font-semibold text-slate-300">Exercise trends</h2>
             <ul className="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
@@ -92,9 +102,72 @@ export function ProgressScreen() {
               ))}
             </ul>
           </section>
+          )}
         </div>
       )}
     </>
+  );
+}
+
+function ConsistencySection({ stats }: { stats: ProgressStats }) {
+  const mc = stats.macroConsistency;
+  return (
+    <section className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <div className="text-xs uppercase tracking-wide text-slate-500">Consistency</div>
+        <div className="mt-2 flex items-center gap-6">
+          <div>
+            <div className="text-2xl font-bold tabular-nums">
+              {stats.currentStreak}
+              <span className="ml-1 text-base">🔥</span>
+            </div>
+            <div className="text-xs text-slate-500">day streak</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold tabular-nums">{stats.workoutsThisWeek}</div>
+            <div className="text-xs text-slate-500">this week</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold tabular-nums">{stats.longestStreak}</div>
+            <div className="text-xs text-slate-500">best streak</div>
+          </div>
+        </div>
+        <div className="mt-3">
+          <div className="mb-1 text-xs text-slate-500">Last 14 days</div>
+          <div className="flex gap-1">
+            {stats.activityLast14.map((active, i) => (
+              <div
+                key={i}
+                className={`h-6 flex-1 rounded ${active ? 'bg-beat' : 'bg-slate-800'}`}
+                title={active ? 'Trained' : 'Rest'}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <div className="text-xs uppercase tracking-wide text-slate-500">Macro consistency</div>
+        <p className="mt-2 text-sm text-slate-300">
+          Logged nutrition on <span className="font-semibold">{mc.daysLogged}</span> of the last 7
+          days.
+        </p>
+        {mc.daysLogged > 0 ? (
+          <ul className="mt-2 space-y-1 text-sm text-slate-400">
+            <li>
+              Protein target hit <span className="font-semibold text-slate-200">{mc.proteinMet}</span>
+              /{mc.daysLogged}
+            </li>
+            <li>
+              Calories on target{' '}
+              <span className="font-semibold text-slate-200">{mc.calorieMet}</span>/{mc.daysLogged}
+            </li>
+          </ul>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500">Log food to track adherence.</p>
+        )}
+      </div>
+    </section>
   );
 }
 
