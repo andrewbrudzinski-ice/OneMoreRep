@@ -3,8 +3,15 @@ import { seedDatabase, SETTINGS_ID } from '../db/seed';
 import { newId, nowISO } from '../lib/id';
 import {
   LOCAL_USER_ID,
+  type DateString,
   type Exercise,
+  type Food,
+  type FoodEntry,
+  type Meal,
+  type MealItem,
+  type MealType,
   type MuscleGroup,
+  type NutritionLog,
   type PersonalRecord,
   type PRType,
   type Routine,
@@ -18,11 +25,19 @@ import {
 import type {
   ExerciseHistory,
   ExerciseHistorySession,
+  FoodEntryInput,
+  FoodEntryPatch,
+  FoodEntryWithFood,
   LastSession,
+  MealDetail,
+  MealItemWithFood,
   NewExerciseInput,
+  NewFoodInput,
+  NewMealInput,
   NewRoutineInput,
   NewSetInput,
   NewWorkoutInput,
+  NutritionDay,
   Repository,
   RoutineDetail,
   RoutineExerciseInput,
@@ -36,6 +51,7 @@ import type {
 import { bestE1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
 import { summarizeVsLast } from '../lib/workoutSummary';
+import { sumEntries, type MacroTotals, ZERO_MACROS } from '../lib/nutrition';
 
 /**
  * IndexedDB-backed repository (via Dexie). This is the v1 implementation of
@@ -812,6 +828,267 @@ export class IndexedDBRepository implements Repository {
     }
     sets.sort((a, b) => a.set_number - b.set_number);
     return { workout: lastWorkout, sets };
+  }
+
+  // --- Nutrition: foods ------------------------------------------------------
+
+  async getFoods(): Promise<Food[]> {
+    const foods = await this.db.foods.toArray();
+    return foods.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getFood(id: string): Promise<Food | undefined> {
+    return this.db.foods.get(id);
+  }
+
+  async createFood(input: NewFoodInput): Promise<Food> {
+    const ts = nowISO();
+    const food: Food = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      name: input.name,
+      serving_size: input.serving_size,
+      serving_unit: input.serving_unit,
+      calories: input.calories,
+      protein: input.protein,
+      carbs: input.carbs,
+      fat: input.fat,
+      fiber: input.fiber,
+      is_custom: true,
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.foods.add(food);
+    return food;
+  }
+
+  async updateFood(id: string, patch: Partial<NewFoodInput>): Promise<Food> {
+    const current = await this.db.foods.get(id);
+    if (!current) throw new Error(`Food ${id} not found`);
+    const next: Food = { ...current, ...patch, id: current.id, updated_at: nowISO() };
+    await this.db.foods.put(next);
+    return next;
+  }
+
+  async deleteFood(id: string): Promise<void> {
+    await this.db.transaction('rw', this.db.foods, this.db.meal_items, async () => {
+      await this.db.meal_items.where('food_id').equals(id).delete();
+      await this.db.foods.delete(id);
+    });
+    // Note: food_entries keep their snapshot — deleting a food never rewrites
+    // history (their food_id simply becomes a dangling reference).
+  }
+
+  // --- Nutrition: meals ------------------------------------------------------
+
+  async getMeals(): Promise<Meal[]> {
+    const meals = await this.db.meals.toArray();
+    return meals.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getMealDetail(id: string): Promise<MealDetail | undefined> {
+    const meal = await this.db.meals.get(id);
+    if (!meal) return undefined;
+    const items = await this.db.meal_items.where('meal_id').equals(id).toArray();
+    const foods = await this.db.foods.bulkGet(items.map((i) => i.food_id));
+    const byId = new Map<string, Food>();
+    for (const f of foods) if (f) byId.set(f.id, f);
+
+    const resolved: MealItemWithFood[] = items.map((item) => ({
+      ...item,
+      food: byId.get(item.food_id),
+    }));
+    const totals: MacroTotals = resolved.reduce((acc, item) => {
+      const f = item.food;
+      if (!f) return acc;
+      return {
+        calories: acc.calories + f.calories * item.servings,
+        protein: acc.protein + f.protein * item.servings,
+        carbs: acc.carbs + f.carbs * item.servings,
+        fat: acc.fat + f.fat * item.servings,
+        fiber: acc.fiber + f.fiber * item.servings,
+      };
+    }, { ...ZERO_MACROS });
+
+    return { meal, items: resolved, totals };
+  }
+
+  async createMeal(input: NewMealInput): Promise<Meal> {
+    const ts = nowISO();
+    const meal: Meal = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      name: input.name,
+      notes: input.notes ?? '',
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.meals.add(meal);
+    return meal;
+  }
+
+  async updateMeal(id: string, patch: NewMealInput): Promise<Meal> {
+    const current = await this.db.meals.get(id);
+    if (!current) throw new Error(`Meal ${id} not found`);
+    const next: Meal = {
+      ...current,
+      name: patch.name,
+      notes: patch.notes ?? current.notes,
+      updated_at: nowISO(),
+    };
+    await this.db.meals.put(next);
+    return next;
+  }
+
+  async deleteMeal(id: string): Promise<void> {
+    await this.db.transaction('rw', this.db.meals, this.db.meal_items, async () => {
+      await this.db.meal_items.where('meal_id').equals(id).delete();
+      await this.db.meals.delete(id);
+    });
+  }
+
+  async addMealItem(mealId: string, foodId: string, servings: number): Promise<MealItem> {
+    const ts = nowISO();
+    const item: MealItem = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      meal_id: mealId,
+      food_id: foodId,
+      servings,
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.meal_items.add(item);
+    return item;
+  }
+
+  async updateMealItem(id: string, servings: number): Promise<MealItem> {
+    const current = await this.db.meal_items.get(id);
+    if (!current) throw new Error(`Meal item ${id} not found`);
+    const next: MealItem = { ...current, servings, updated_at: nowISO() };
+    await this.db.meal_items.put(next);
+    return next;
+  }
+
+  async removeMealItem(id: string): Promise<void> {
+    await this.db.meal_items.delete(id);
+  }
+
+  // --- Nutrition: daily log --------------------------------------------------
+
+  async getNutritionDay(date: DateString): Promise<NutritionDay> {
+    const log = (await this.db.nutrition_logs.where('date').equals(date).first()) ?? null;
+    const emptyByMeal = (): Record<MealType, FoodEntryWithFood[]> => ({
+      breakfast: [],
+      lunch: [],
+      dinner: [],
+      snack: [],
+    });
+
+    if (!log) {
+      return { date, log: null, entries: [], byMeal: emptyByMeal(), totals: { ...ZERO_MACROS } };
+    }
+
+    const entries = await this.db.food_entries.where('nutrition_log_id').equals(log.id).toArray();
+    const foodIds = entries.map((e) => e.food_id).filter((id): id is string => id !== null);
+    const foods = await this.db.foods.bulkGet([...new Set(foodIds)]);
+    const byId = new Map<string, Food>();
+    for (const f of foods) if (f) byId.set(f.id, f);
+
+    const resolved: FoodEntryWithFood[] = entries.map((e) => ({
+      ...e,
+      food: e.food_id ? byId.get(e.food_id) : undefined,
+    }));
+    resolved.sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+    const byMeal = emptyByMeal();
+    for (const entry of resolved) byMeal[entry.meal_type].push(entry);
+
+    return { date, log, entries: resolved, byMeal, totals: sumEntries(resolved) };
+  }
+
+  /** Get-or-create the single nutrition log for a date. */
+  private async ensureNutritionLog(date: DateString): Promise<NutritionLog> {
+    const existing = await this.db.nutrition_logs.where('date').equals(date).first();
+    if (existing) return existing;
+    const ts = nowISO();
+    const log: NutritionLog = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      date,
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.nutrition_logs.add(log);
+    return log;
+  }
+
+  private buildFoodEntry(
+    logId: string,
+    food: Food,
+    mealType: MealType,
+    servings: number,
+  ): FoodEntry {
+    const ts = nowISO();
+    return {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      nutrition_log_id: logId,
+      food_id: food.id,
+      meal_type: mealType,
+      servings,
+      // Snapshot per-serving macros at log time — editing the food later
+      // never rewrites this entry.
+      name_snapshot: food.name,
+      calories_snapshot: food.calories,
+      protein_snapshot: food.protein,
+      carbs_snapshot: food.carbs,
+      fat_snapshot: food.fat,
+      fiber_snapshot: food.fiber,
+      created_at: ts,
+      updated_at: ts,
+    };
+  }
+
+  async addFoodEntry(date: DateString, input: FoodEntryInput): Promise<FoodEntry> {
+    const food = await this.db.foods.get(input.food_id);
+    if (!food) throw new Error(`Food ${input.food_id} not found`);
+    const log = await this.ensureNutritionLog(date);
+    const entry = this.buildFoodEntry(log.id, food, input.meal_type, input.servings);
+    await this.db.food_entries.add(entry);
+    return entry;
+  }
+
+  async addMealToDay(date: DateString, mealId: string, mealType: MealType): Promise<FoodEntry[]> {
+    const items = await this.db.meal_items.where('meal_id').equals(mealId).toArray();
+    const log = await this.ensureNutritionLog(date);
+    const entries: FoodEntry[] = [];
+    for (const item of items) {
+      const food = await this.db.foods.get(item.food_id);
+      if (!food) continue;
+      entries.push(this.buildFoodEntry(log.id, food, mealType, item.servings));
+    }
+    if (entries.length > 0) {
+      await this.db.food_entries.bulkAdd(entries);
+    }
+    return entries;
+  }
+
+  async updateFoodEntry(id: string, patch: FoodEntryPatch): Promise<FoodEntry> {
+    const current = await this.db.food_entries.get(id);
+    if (!current) throw new Error(`Food entry ${id} not found`);
+    const next: FoodEntry = {
+      ...current,
+      servings: patch.servings ?? current.servings,
+      meal_type: patch.meal_type ?? current.meal_type,
+      updated_at: nowISO(),
+    };
+    await this.db.food_entries.put(next);
+    return next;
+  }
+
+  async removeFoodEntry(id: string): Promise<void> {
+    await this.db.food_entries.delete(id);
   }
 }
 

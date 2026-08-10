@@ -9,6 +9,8 @@ import { WorkoutScreen } from './screens/WorkoutScreen';
 import { RoutineEditorScreen } from './screens/RoutineEditorScreen';
 import { WorkoutModeScreen } from './screens/WorkoutModeScreen';
 import { NutritionScreen } from './screens/NutritionScreen';
+import { FoodsScreen } from './screens/FoodsScreen';
+import { MealsScreen } from './screens/MealsScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { ExercisesScreen } from './screens/ExercisesScreen';
 
@@ -37,6 +39,8 @@ const router = createBrowserRouter([
       { path: 'workout', element: <WorkoutScreen /> },
       { path: 'workout/routines/:routineId', element: <RoutineEditorScreen /> },
       { path: 'nutrition', element: <NutritionScreen /> },
+      { path: 'nutrition/foods', element: <FoodsScreen /> },
+      { path: 'nutrition/meals', element: <MealsScreen /> },
       {
         path: 'progress',
         element: (

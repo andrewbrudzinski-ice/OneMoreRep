@@ -80,7 +80,12 @@ Built in phases per the product spec; each phase is checked before the next.
       lifetime bests, per-session breakdown, and e1RM / volume / top-weight
       **charts** (Recharts, code-split). **Progress** page: PR feed + per-exercise
       trend links.
-- [ ] Phase 4 — Nutrition
+- [x] **Phase 4 — Nutrition.** Custom foods CRUD + instant search; **meals**
+      (grouped foods) CRUD with a per-item editor; daily log by meal type with
+      **macros snapshotted at log time** (editing/deleting a food never rewrites
+      past entries — unit-proven); edit servings / delete entries inline;
+      quick-add a saved meal; live daily totals vs targets as **4 macro rings +
+      a fiber bar**; per-day navigation.
 - [ ] Phase 5 — Bodyweight, Dashboard, Analytics
 - [ ] Phase 6 — Export/Import + polish
 - [ ] Phase 7 — Should-haves (Readiness, heatmap, RPE auto-regulation)

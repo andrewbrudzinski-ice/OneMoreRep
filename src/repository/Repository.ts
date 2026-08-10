@@ -1,7 +1,14 @@
 import type {
+  DateString,
   DayOfWeek,
   Exercise,
+  Food,
+  FoodEntry,
+  Meal,
+  MealItem,
+  MealType,
   MuscleGroup,
+  NutritionLog,
   PersonalRecord,
   Routine,
   RoutineExercise,
@@ -13,6 +20,7 @@ import type {
   WorkoutSet,
 } from '../types';
 import type { VsLastResult } from '../lib/workoutSummary';
+import type { MacroTotals } from '../lib/nutrition';
 
 /**
  * The Repository contract — the ONLY surface the UI is allowed to touch for
@@ -105,6 +113,32 @@ export interface Repository {
   getExerciseHistory(exerciseId: string): Promise<ExerciseHistory | undefined>;
   /** Post-completion summary: counts, volume, vs-last, and new PRs. */
   getWorkoutSummary(workoutId: string): Promise<WorkoutSummaryData | undefined>;
+
+  // --- Nutrition: foods ----------------------------------------------------
+  getFoods(): Promise<Food[]>;
+  getFood(id: string): Promise<Food | undefined>;
+  createFood(input: NewFoodInput): Promise<Food>;
+  updateFood(id: string, patch: Partial<NewFoodInput>): Promise<Food>;
+  deleteFood(id: string): Promise<void>;
+
+  // --- Nutrition: meals ----------------------------------------------------
+  getMeals(): Promise<Meal[]>;
+  getMealDetail(id: string): Promise<MealDetail | undefined>;
+  createMeal(input: NewMealInput): Promise<Meal>;
+  updateMeal(id: string, patch: NewMealInput): Promise<Meal>;
+  deleteMeal(id: string): Promise<void>;
+  addMealItem(mealId: string, foodId: string, servings: number): Promise<MealItem>;
+  updateMealItem(id: string, servings: number): Promise<MealItem>;
+  removeMealItem(id: string): Promise<void>;
+
+  // --- Nutrition: daily log ------------------------------------------------
+  getNutritionDay(date: DateString): Promise<NutritionDay>;
+  /** Log a single food into a day/meal, snapshotting its macros. */
+  addFoodEntry(date: DateString, input: FoodEntryInput): Promise<FoodEntry>;
+  /** Quick-add every item of a saved meal into a day/meal, each snapshotted. */
+  addMealToDay(date: DateString, mealId: string, mealType: MealType): Promise<FoodEntry[]>;
+  updateFoodEntry(id: string, patch: FoodEntryPatch): Promise<FoodEntry>;
+  removeFoodEntry(id: string): Promise<void>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
@@ -234,4 +268,60 @@ export interface WorkoutSummaryData {
   totalVolume: number;
   vsLast: VsLastResult;
   newPRs: PersonalRecord[];
+}
+
+// --- Nutrition inputs & views ---------------------------------------------
+
+/** Shape for creating/editing a custom food (per-serving macros). */
+export interface NewFoodInput {
+  name: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}
+
+export interface NewMealInput {
+  name: string;
+  notes?: string;
+}
+
+export interface FoodEntryInput {
+  food_id: string;
+  meal_type: MealType;
+  servings: number;
+}
+
+export interface FoodEntryPatch {
+  servings?: number;
+  meal_type?: MealType;
+}
+
+/** A meal item joined with its food (food may have been deleted). */
+export interface MealItemWithFood extends MealItem {
+  food: Food | undefined;
+}
+
+/** A meal with its resolved items and computed per-serving totals. */
+export interface MealDetail {
+  meal: Meal;
+  items: MealItemWithFood[];
+  totals: MacroTotals;
+}
+
+/** A food entry joined with its food (food may have been deleted). */
+export interface FoodEntryWithFood extends FoodEntry {
+  food: Food | undefined;
+}
+
+/** A day's nutrition: the log, entries grouped by meal, and totals. */
+export interface NutritionDay {
+  date: DateString;
+  log: NutritionLog | null;
+  entries: FoodEntryWithFood[];
+  byMeal: Record<MealType, FoodEntryWithFood[]>;
+  totals: MacroTotals;
 }
