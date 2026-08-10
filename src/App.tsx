@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { Spinner } from './components/ui';
 import { RepositoryProvider } from './repository/RepositoryContext';
 import { useRepositoryContext } from './repository/repositoryContext';
+import { applyTheme } from './lib/theme';
 import { HomeScreen } from './screens/HomeScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
 import { RoutineEditorScreen } from './screens/RoutineEditorScreen';
@@ -13,6 +14,8 @@ import { FoodsScreen } from './screens/FoodsScreen';
 import { MealsScreen } from './screens/MealsScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { ExercisesScreen } from './screens/ExercisesScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { DataScreen } from './screens/DataScreen';
 
 // Analysis screens pull in Recharts — load them on demand to keep the initial
 // (training-mode) bundle lean.
@@ -54,6 +57,8 @@ const router = createBrowserRouter([
       },
       { path: 'more', element: <MoreScreen /> },
       { path: 'more/exercises', element: <ExercisesScreen /> },
+      { path: 'more/settings', element: <SettingsScreen /> },
+      { path: 'more/data', element: <DataScreen /> },
       {
         path: 'history/:exerciseId',
         element: (
@@ -86,7 +91,13 @@ const router = createBrowserRouter([
 
 /** Gate the app on the repository being seeded/ready. */
 function Gate() {
-  const { ready, error } = useRepositoryContext();
+  const { repository, ready, error } = useRepositoryContext();
+
+  // Apply the saved theme once data is ready.
+  useEffect(() => {
+    if (!ready) return;
+    void repository.getSettings().then((s) => applyTheme(s.theme));
+  }, [ready, repository]);
 
   if (error) {
     return (

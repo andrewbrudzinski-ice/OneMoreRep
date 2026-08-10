@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 interface TabDef {
@@ -37,6 +37,7 @@ const activeClasses = 'text-beat';
 const inactiveClasses = 'text-slate-400 hover:text-slate-200';
 
 export function AppShell() {
+  const location = useLocation();
   return (
     <div className="flex min-h-full flex-col md:flex-row">
       {/* Sidebar (desktop) */}
@@ -66,7 +67,10 @@ export function AppShell() {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0">
-        <Outlet />
+        {/* key on pathname so each screen replays the restrained enter fade */}
+        <div key={location.pathname} className="screen-enter">
+          <Outlet />
+        </div>
       </main>
 
       {/* Bottom tab bar (mobile) */}

@@ -1,4 +1,5 @@
-import { FitnessDB, db as sharedDb } from '../db/database';
+import { FitnessDB, db as sharedDb, STORE_NAMES } from '../db/database';
+import { buildBackup, type BackupFile } from '../lib/backup';
 import { seedDatabase, SETTINGS_ID } from '../db/seed';
 import { newId, nowISO } from '../lib/id';
 import {
@@ -87,6 +88,13 @@ export class IndexedDBRepository implements Repository {
       throw new Error('Local user not found — did seed() run?');
     }
     return user;
+  }
+
+  async updateUser(patch: { name?: string }): Promise<User> {
+    const current = await this.getCurrentUser();
+    const next: User = { ...current, name: patch.name ?? current.name, updated_at: nowISO() };
+    await this.db.users.put(next);
+    return next;
   }
 
   // --- Settings --------------------------------------------------------------
@@ -1311,6 +1319,30 @@ export class IndexedDBRepository implements Repository {
       activityLast14,
       macroConsistency: { daysLogged, proteinMet, calorieMet },
     };
+  }
+
+  // --- Backup (export / import) ----------------------------------------------
+
+  async exportData(): Promise<BackupFile> {
+    const data: Record<string, unknown[]> = {};
+    for (const store of STORE_NAMES) {
+      data[store] = await this.db.table(store).toArray();
+    }
+    return buildBackup(data, nowISO());
+  }
+
+  async importData(backup: BackupFile): Promise<void> {
+    // Wipe + restore atomically so a failed import can't leave a half state.
+    await this.db.transaction('rw', this.db.tables, async () => {
+      for (const store of STORE_NAMES) {
+        const table = this.db.table(store);
+        await table.clear();
+        const rows = backup.data[store] ?? [];
+        if (rows.length > 0) {
+          await table.bulkAdd(rows);
+        }
+      }
+    });
   }
 }
 

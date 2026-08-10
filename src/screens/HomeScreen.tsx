@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { Button, Modal, Spinner, TextField } from '../components/ui';
+import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
 import { MacroRings } from '../components/MacroRings';
 import { Sparkline } from '../components/Sparkline';
 import { useRepository } from '../repository/repositoryContext';
@@ -35,6 +35,14 @@ export function HomeScreen() {
     }
   }
 
+  if (state.error) {
+    return (
+      <>
+        <ScreenHeader title="Home" />
+        <ErrorState error={state.error} onRetry={state.reload} />
+      </>
+    );
+  }
   if (state.loading || !state.data) {
     return (
       <>

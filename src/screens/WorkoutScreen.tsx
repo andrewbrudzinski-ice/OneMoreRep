@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { Button, EmptyState, Spinner } from '../components/ui';
+import { Button, EmptyState, ErrorState, Spinner } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { dayLabel } from '../lib/labels';
@@ -93,7 +93,9 @@ export function WorkoutScreen() {
           Start empty workout
         </Button>
 
-        {state.loading ? (
+        {state.error ? (
+          <ErrorState error={state.error} onRetry={state.reload} />
+        ) : state.loading ? (
           <Spinner />
         ) : (state.data?.routines.length ?? 0) === 0 ? (
           <EmptyState

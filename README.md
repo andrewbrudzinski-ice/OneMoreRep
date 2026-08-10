@@ -95,5 +95,12 @@ Built in phases per the product spec; each phase is checked before the next.
       longest streak, and 7-day macro consistency. Rolling-average and streak
       math are pure & unit-tested; Home uses inline SVG sparklines to stay off
       the Recharts bundle.
-- [ ] Phase 6 — Export/Import + polish
+- [x] **Phase 6 — Export/Import + polish.** Validated **JSON export/import**
+      (versioned envelope, rejects foreign/newer/corrupt files; atomic
+      wipe-and-restore) — round-trip proven by test. **Settings** screen
+      (profile, units, goal, theme, macro targets, rest default,
+      load_always_green) with theme applied on load. Empty / loading / **error**
+      states across the primary screens, an About sheet, and a restrained
+      screen-enter transition. Verified installable + **fully offline** (SW
+      precache; offline reload, navigation, and logging all work).
 - [ ] Phase 7 — Should-haves (Readiness, heatmap, RPE auto-regulation)

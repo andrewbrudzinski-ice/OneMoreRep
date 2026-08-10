@@ -194,3 +194,18 @@ export function EmptyState({ icon, title, note }: { icon: string; title: string;
     </div>
   );
 }
+
+export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div className="text-4xl">⚠️</div>
+      <p className="font-medium text-red-400">Something went wrong</p>
+      <p className="max-w-xs text-sm text-slate-400">{error.message}</p>
+      {onRetry && (
+        <Button variant="secondary" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+    </div>
+  );
+}

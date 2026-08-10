@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { Button, Modal, Spinner, TextField } from '../components/ui';
+import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
 import { MacroRings } from '../components/MacroRings';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -99,7 +99,9 @@ export function NutritionScreen() {
         }
       />
 
-      {!day || !settings ? (
+      {state.error ? (
+        <ErrorState error={state.error} onRetry={state.reload} />
+      ) : !day || !settings ? (
         <Spinner />
       ) : (
         <div className="space-y-4 p-4">

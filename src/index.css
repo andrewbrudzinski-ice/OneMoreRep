@@ -24,3 +24,21 @@ html {
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
 }
+
+/* Restrained screen-enter transition. */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .screen-enter {
+    animation: fadeInUp 160ms ease-out;
+  }
+}

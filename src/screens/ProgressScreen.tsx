@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { EmptyState, Spinner } from '../components/ui';
+import { EmptyState, ErrorState, Spinner } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
@@ -37,6 +37,7 @@ export function ProgressScreen() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [state.data?.prs, exerciseById]);
 
+  if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
   if (state.loading) return <Spinner />;
 
   const prs = state.data?.prs ?? [];

@@ -22,6 +22,7 @@ import type {
 } from '../types';
 import type { VsLastResult } from '../lib/workoutSummary';
 import type { MacroTotals } from '../lib/nutrition';
+import type { BackupFile } from '../lib/backup';
 
 /**
  * The Repository contract — the ONLY surface the UI is allowed to touch for
@@ -39,6 +40,7 @@ export interface Repository {
 
   // --- Users ---------------------------------------------------------------
   getCurrentUser(): Promise<User>;
+  updateUser(patch: { name?: string }): Promise<User>;
 
   // --- Settings ------------------------------------------------------------
   getSettings(): Promise<Settings>;
@@ -154,6 +156,12 @@ export interface Repository {
   getDashboardData(): Promise<DashboardData>;
   /** Analytics for the Progress page: frequency, streaks, macro consistency. */
   getProgressStats(): Promise<ProgressStats>;
+
+  // --- Backup (export / import) --------------------------------------------
+  /** Full-database snapshot as a validated backup envelope. */
+  exportData(): Promise<BackupFile>;
+  /** Replace ALL data with a validated backup (wipe + restore). */
+  importData(backup: BackupFile): Promise<void>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
