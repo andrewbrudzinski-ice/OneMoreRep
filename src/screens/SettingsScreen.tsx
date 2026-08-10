@@ -145,7 +145,9 @@ function SettingsForm({
             </option>
           ))}
         </SelectField>
-        <p className="text-xs text-slate-500">OneMoreRep is tuned for dark mode.</p>
+        <p className="text-xs text-slate-500">
+          “System” follows your device; Light and Dark are both fully supported.
+        </p>
       </Section>
 
       <Section title="Daily macro targets">

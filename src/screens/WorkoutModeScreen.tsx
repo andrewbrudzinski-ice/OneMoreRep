@@ -508,7 +508,7 @@ function SetRow({
           onClick={() => onComplete(!set.is_completed)}
           className={`h-9 w-9 shrink-0 rounded-lg text-lg font-bold ${
             set.is_completed
-              ? 'bg-beat text-slate-950'
+              ? 'bg-beat text-onaccent'
               : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
           }`}
           aria-label={set.is_completed ? 'Mark incomplete' : 'Complete set'}

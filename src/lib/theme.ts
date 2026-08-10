@@ -14,4 +14,8 @@ export function applyTheme(theme: Theme): void {
   const dark = theme === 'dark' || (theme === 'system' && prefersDark);
   root.classList.toggle('dark', dark);
   root.style.colorScheme = dark ? 'dark' : 'light';
+
+  // Match the browser/PWA chrome color to the theme's page background.
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0f172a' : '#f8fafc');
 }

@@ -251,7 +251,7 @@ function AddEntrySheet({
               key={t}
               onClick={() => setTab(t)}
               className={`flex-1 rounded-lg py-2 text-sm font-medium ${
-                tab === t ? 'bg-beat text-slate-950' : 'bg-slate-800 text-slate-300'
+                tab === t ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
               }`}
             >
               {t === 'food' ? 'Foods' : 'Saved meals'}

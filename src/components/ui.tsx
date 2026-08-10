@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTML
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-beat text-slate-950 hover:bg-green-400 font-semibold',
+  primary: 'bg-beat text-onaccent hover:bg-green-400 font-semibold',
   secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
   ghost: 'bg-transparent text-slate-300 hover:bg-slate-800',
   danger: 'bg-transparent text-red-400 hover:bg-red-500/10',
