@@ -23,6 +23,8 @@ import type {
 import type { VsLastResult } from '../lib/workoutSummary';
 import type { MacroTotals } from '../lib/nutrition';
 import type { BackupFile } from '../lib/backup';
+import type { ReadinessResult } from '../lib/readiness';
+import type { AutoRegResult } from '../lib/autoRegulation';
 
 /**
  * The Repository contract — the ONLY surface the UI is allowed to touch for
@@ -162,6 +164,16 @@ export interface Repository {
   exportData(): Promise<BackupFile>;
   /** Replace ALL data with a validated backup (wipe + restore). */
   importData(backup: BackupFile): Promise<void>;
+
+  // --- Phase 7: should-haves -----------------------------------------------
+  /** Qualitative training-readiness signal from the user's own log. */
+  getReadiness(): Promise<ReadinessResult>;
+  /** Weekly per-muscle working volume for the heatmap. */
+  getMuscleHeatmap(): Promise<MuscleHeatmapCell[]>;
+  /** RPE auto-regulation suggestion for an exercise (transparent rule). */
+  getProgressionSuggestion(exerciseId: string, targetReps?: number): Promise<AutoRegResult>;
+  /** The rest duration last used for an exercise (per-exercise memory). */
+  getLastRestSeconds(exerciseId: string): Promise<number | null>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
@@ -398,6 +410,19 @@ export interface DashboardData {
   weeklyVolume: number;
   /** Per-day working volume for the last 7 days (oldest→newest). */
   volumeSparkline: number[];
+  /** Training readiness signal (Phase 7). */
+  readiness: ReadinessResult;
+}
+
+/** One muscle group's weekly heatmap cell. */
+export interface MuscleHeatmapCell {
+  muscleGroupId: string;
+  name: string;
+  volume: number;
+  /** 0..1 relative to the busiest muscle this week. */
+  intensity: number;
+  /** Exercises that hit this muscle (as primary) this week, by volume. */
+  exercises: { name: string; volume: number }[];
 }
 
 /** Analytics for the Progress page. */

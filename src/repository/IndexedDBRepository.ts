@@ -27,6 +27,7 @@ import {
 import type {
   BodyWeightStats,
   DashboardData,
+  MuscleHeatmapCell,
   ProgressStats,
   ExerciseHistory,
   ExerciseHistorySession,
@@ -63,6 +64,13 @@ import { averageWithinDays } from '../lib/rollingAverage';
 import { countInLastDays, currentStreak, longestStreak } from '../lib/streak';
 import { addDays, dayDiff } from '../lib/dates';
 import { todayDateString } from '../lib/id';
+import { computeReadiness, type ReadinessResult } from '../lib/readiness';
+import { aggregateMuscleVolume, normalizeIntensities } from '../lib/muscleVolume';
+import {
+  suggestProgression,
+  type AutoRegResult,
+  type RpeSet,
+} from '../lib/autoRegulation';
 
 /**
  * IndexedDB-backed repository (via Dexie). This is the v1 implementation of
@@ -1262,6 +1270,8 @@ export class IndexedDBRepository implements Repository {
       exerciseName: exerciseNames.get(record.exercise_id) ?? 'Exercise',
     }));
 
+    const readiness = await this.getReadiness();
+
     return {
       userName: user.name,
       settings,
@@ -1273,6 +1283,7 @@ export class IndexedDBRepository implements Repository {
       recentPRs,
       weeklyVolume,
       volumeSparkline,
+      readiness,
     };
   }
 
@@ -1343,6 +1354,156 @@ export class IndexedDBRepository implements Repository {
         }
       }
     });
+  }
+
+  // --- Phase 7: should-haves -------------------------------------------------
+
+  async getReadiness(): Promise<ReadinessResult> {
+    const today = todayDateString();
+    const completed = (await this.db.workouts.toArray())
+      .filter((w) => w.completed_at !== null)
+      .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''));
+
+    const workoutDays = completed.map((w) => (w.completed_at ?? '').slice(0, 10));
+
+    // Volume of the last 6 sessions → recent (0-2) vs prior (3-5) averages.
+    const volumes: number[] = [];
+    for (const w of completed.slice(0, 6)) volumes.push(await this.computeWorkoutVolume(w.id));
+    const avg = (arr: number[]) =>
+      arr.length === 0 ? null : arr.reduce((a, b) => a + b, 0) / arr.length;
+    const recentVolumeAvg = avg(volumes.slice(0, 3));
+    const priorVolumeAvg = avg(volumes.slice(3, 6));
+
+    // Muscles trained on each of the two most recent training days.
+    const musclesByDay = new Map<string, Set<string>>();
+    for (const w of completed) {
+      const day = (w.completed_at ?? '').slice(0, 10);
+      const set = musclesByDay.get(day) ?? new Set<string>();
+      const wex = await this.db.workout_exercises.where('workout_id').equals(w.id).toArray();
+      const exercises = await this.db.exercises.bulkGet(wex.map((r) => r.exercise_id));
+      for (const ex of exercises) if (ex) set.add(ex.primary_muscle_group_id);
+      musclesByDay.set(day, set);
+    }
+    const days = [...musclesByDay.keys()].sort((a, b) => b.localeCompare(a));
+    let backToBackMuscles: string[] = [];
+    if (days.length >= 2 && dayDiff(days[0]!, days[1]!) === 1) {
+      const a = musclesByDay.get(days[0]!)!;
+      const b = musclesByDay.get(days[1]!)!;
+      const shared = [...a].filter((m) => b.has(m));
+      if (shared.length > 0) {
+        const groups = await this.db.muscle_groups.bulkGet(shared);
+        backToBackMuscles = groups.filter((g): g is NonNullable<typeof g> => !!g).map((g) => g.name);
+      }
+    }
+
+    return computeReadiness({
+      consecutiveTrainingDays: currentStreak(workoutDays, today),
+      backToBackMuscles,
+      recentVolumeAvg,
+      priorVolumeAvg,
+    });
+  }
+
+  async getMuscleHeatmap(): Promise<MuscleHeatmapCell[]> {
+    const today = todayDateString();
+    const completed = (await this.db.workouts.toArray()).filter(
+      (w) => w.completed_at !== null && dayDiff(today, (w.completed_at ?? '').slice(0, 10)) < 7,
+    );
+
+    interface Contribution {
+      volume: number;
+      primaryMuscleId: string;
+      secondaryMuscleIds: string[];
+    }
+    const contributions: Contribution[] = [];
+    // Per-muscle exercise breakdown (by primary attribution).
+    const exerciseVol = new Map<string, Map<string, number>>();
+
+    for (const w of completed) {
+      const wex = await this.db.workout_exercises.where('workout_id').equals(w.id).toArray();
+      for (const row of wex) {
+        const exercise = await this.db.exercises.get(row.exercise_id);
+        if (!exercise) continue;
+        const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+        let vol = 0;
+        for (const s of sets) if (!s.is_warmup && s.is_completed) vol += s.weight * s.reps;
+        if (vol <= 0) continue;
+        contributions.push({
+          volume: vol,
+          primaryMuscleId: exercise.primary_muscle_group_id,
+          secondaryMuscleIds: exercise.secondary_muscle_group_ids,
+        });
+        const perMuscle = exerciseVol.get(exercise.primary_muscle_group_id) ?? new Map();
+        perMuscle.set(exercise.name, (perMuscle.get(exercise.name) ?? 0) + vol);
+        exerciseVol.set(exercise.primary_muscle_group_id, perMuscle);
+      }
+    }
+
+    const totals = aggregateMuscleVolume(contributions);
+    const intensities = normalizeIntensities(totals);
+    const groups = await this.db.muscle_groups.toArray();
+
+    return groups
+      .map((g) => ({
+        muscleGroupId: g.id,
+        name: g.name,
+        volume: Math.round(totals[g.id] ?? 0),
+        intensity: intensities[g.id] ?? 0,
+        exercises: [...(exerciseVol.get(g.id)?.entries() ?? [])]
+          .map(([name, volume]) => ({ name, volume: Math.round(volume) }))
+          .sort((a, b) => b.volume - a.volume),
+      }))
+      .sort((a, b) => b.volume - a.volume);
+  }
+
+  async getProgressionSuggestion(exerciseId: string, targetReps = 8): Promise<AutoRegResult> {
+    const settings = await this.getSettings();
+    const rows = await this.db.workout_exercises.where('exercise_id').equals(exerciseId).toArray();
+
+    // Group by workout; keep only completed workouts, most recent first.
+    const byWorkout = new Map<string, string[]>();
+    for (const row of rows) {
+      const list = byWorkout.get(row.workout_id) ?? [];
+      list.push(row.id);
+      byWorkout.set(row.workout_id, list);
+    }
+    const workouts = (await this.db.workouts.bulkGet([...byWorkout.keys()]))
+      .filter((w): w is NonNullable<typeof w> => !!w && w.completed_at !== null)
+      .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''))
+      .slice(0, 2);
+
+    const sessions: RpeSet[][] = [];
+    for (const w of workouts) {
+      const setLists = await Promise.all(
+        (byWorkout.get(w.id) ?? []).map((rowId) =>
+          this.db.sets.where('workout_exercise_id').equals(rowId).toArray(),
+        ),
+      );
+      const sets = setLists.flat().map((s) => ({
+        weight: s.weight,
+        reps: s.reps,
+        rpe: s.rpe,
+        is_warmup: s.is_warmup,
+        is_completed: s.is_completed,
+      }));
+      sessions.push(sets);
+    }
+
+    return suggestProgression(sessions, targetReps, settings.units);
+  }
+
+  async getLastRestSeconds(exerciseId: string): Promise<number | null> {
+    const rows = await this.db.workout_exercises.where('exercise_id').equals(exerciseId).toArray();
+    let latest: { rest: number; loggedAt: string } | null = null;
+    for (const row of rows) {
+      const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+      for (const s of sets) {
+        if (s.rest_seconds !== null && (!latest || s.logged_at > latest.loggedAt)) {
+          latest = { rest: s.rest_seconds, loggedAt: s.logged_at };
+        }
+      }
+    }
+    return latest?.rest ?? null;
   }
 }
 

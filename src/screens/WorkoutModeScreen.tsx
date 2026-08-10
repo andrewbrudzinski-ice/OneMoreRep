@@ -9,6 +9,7 @@ import { useElapsedSeconds, formatDuration } from '../hooks/useElapsedSeconds';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useRestTimer } from '../hooks/useRestTimer';
 import { evaluateSet, type BeatEvaluation } from '../lib/beatLastTime';
+import type { AutoRegResult } from '../lib/autoRegulation';
 import { filterExercises } from '../lib/exerciseSearch';
 import { titleCase } from '../lib/labels';
 import type {
@@ -29,6 +30,8 @@ interface LoadedData {
   detail: WorkoutDetail;
   settings: Settings;
   lastByExercise: Map<string, LastSession | undefined>;
+  suggestionByExercise: Map<string, AutoRegResult>;
+  restByExercise: Map<string, number | null>;
 }
 
 export function WorkoutModeScreen() {
@@ -48,13 +51,27 @@ export function WorkoutModeScreen() {
       repository.getSettings(),
     ]);
     if (!detail) return null;
-    const entries = await Promise.all(
-      detail.exercises.map(
-        async (e) =>
-          [e.exercise_id, await repository.getLastSession(e.exercise_id, { excludeWorkoutId: workoutId })] as const,
-      ),
+    const exIds = [...new Set(detail.exercises.map((e) => e.exercise_id))];
+    const [lastList, restList] = await Promise.all([
+      Promise.all(exIds.map((id) => repository.getLastSession(id, { excludeWorkoutId: workoutId }))),
+      Promise.all(exIds.map((id) => repository.getLastRestSeconds(id))),
+    ]);
+    const lastByExercise = new Map(exIds.map((id, i) => [id, lastList[i]]));
+    // Auto-regulation suggestion, targeting the top rep count from last time.
+    const suggestionList = await Promise.all(
+      exIds.map((id) => {
+        const working = (lastByExercise.get(id)?.sets ?? []).filter((s) => !s.is_warmup);
+        const target = working.length > 0 ? Math.max(...working.map((s) => s.reps)) : 8;
+        return repository.getProgressionSuggestion(id, target);
+      }),
     );
-    return { detail, settings, lastByExercise: new Map(entries) };
+    return {
+      detail,
+      settings,
+      lastByExercise,
+      suggestionByExercise: new Map(exIds.map((id, i) => [id, suggestionList[i]!])),
+      restByExercise: new Map(exIds.map((id, i) => [id, restList[i]!])),
+    };
   }, [workoutId]);
 
   // Pre-fill: seed set rows from last time for any exercise that has none yet.
@@ -94,7 +111,7 @@ export function WorkoutModeScreen() {
     );
   }
 
-  const { detail, settings, lastByExercise } = state.data;
+  const { detail, settings, lastByExercise, suggestionByExercise, restByExercise } = state.data;
   const { workout } = detail;
 
   async function setIntent(intent: WorkoutIntent) {
@@ -109,9 +126,14 @@ export function WorkoutModeScreen() {
   }
 
   async function onCompleteSet(setId: string, willComplete: boolean, exerciseRest: number | null) {
-    await repository.updateSet(setId, { is_completed: willComplete });
+    const restDuration = exerciseRest ?? settings.default_rest_seconds;
+    // Persist the rest used so it's remembered per-exercise next time.
+    await repository.updateSet(
+      setId,
+      willComplete ? { is_completed: true, rest_seconds: restDuration } : { is_completed: false },
+    );
     if (willComplete) {
-      rest.start(exerciseRest ?? settings.default_rest_seconds);
+      rest.start(restDuration);
     }
     state.reload();
   }
@@ -147,6 +169,8 @@ export function WorkoutModeScreen() {
               key={item.id}
               item={item}
               last={lastByExercise.get(item.exercise_id)}
+              suggestion={suggestionByExercise.get(item.exercise_id)}
+              rememberedRest={restByExercise.get(item.exercise_id) ?? null}
               settings={settings}
               intent={workout.intent}
               onChanged={() => state.reload()}
@@ -249,6 +273,8 @@ function IntentSelector({
 function ExerciseBlock({
   item,
   last,
+  suggestion,
+  rememberedRest,
   settings,
   intent,
   onChanged,
@@ -256,6 +282,8 @@ function ExerciseBlock({
 }: {
   item: WorkoutExerciseWithSets;
   last: LastSession | undefined;
+  suggestion: AutoRegResult | undefined;
+  rememberedRest: number | null;
   settings: Settings;
   intent: WorkoutIntent;
   onChanged: () => void;
@@ -333,6 +361,12 @@ function ExerciseBlock({
         </div>
       </div>
 
+      {suggestion?.suggest && suggestion.reason && (
+        <div className="mt-3 rounded-xl border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
+          💡 {suggestion.reason}
+        </div>
+      )}
+
       <div className="mt-3 space-y-1.5">
         {item.sets.map((set) => (
           <SetRow
@@ -343,7 +377,7 @@ function ExerciseBlock({
             loadAlwaysGreen={settings.load_always_green}
             intent={intent}
             onChanged={onChanged}
-            onComplete={(willComplete) => onCompleteSet(set.id, willComplete, null)}
+            onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
           />
         ))}
       </div>

@@ -103,4 +103,12 @@ Built in phases per the product spec; each phase is checked before the next.
       states across the primary screens, an About sheet, and a restrained
       screen-enter transition. Verified installable + **fully offline** (SW
       precache; offline reload, navigation, and logging all work).
-- [ ] Phase 7 — Should-haves (Readiness, heatmap, RPE auto-regulation)
+- [x] **Phase 7 — Should-haves.** **Training Readiness** (Fresh/Moderate/
+      Fatigued) from streak, per-muscle back-to-back recency, and volume trend —
+      qualitative, reasons shown, clearly non-medical (dashboard + Progress).
+      **Muscle-group heatmap**: front/back SVG silhouette shaded by weekly
+      per-muscle working volume; tap → its exercises + volume. **RPE
+      auto-regulation**: "hit target reps at RPE ≤7 twice → try +5 lb / +2.5 kg",
+      shown as a transparent Workout-Mode callout. **Per-exercise remembered
+      rest** (rest timer reuses the last rest used for that exercise). All three
+      engines are pure & unit-tested.

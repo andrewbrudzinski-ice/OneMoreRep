@@ -4,6 +4,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
 import { MacroRings } from '../components/MacroRings';
 import { Sparkline } from '../components/Sparkline';
+import { ReadinessCard } from '../components/ReadinessCard';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { todayDateString } from '../lib/id';
@@ -113,6 +114,11 @@ export function HomeScreen() {
             <p className="mt-2 text-sm text-slate-500">No weigh-ins yet. Tap “+ Weigh in”.</p>
           )}
         </Card>
+
+        {/* Training readiness */}
+        <div className="md:col-span-2">
+          <ReadinessCard readiness={d.readiness} />
+        </div>
 
         {/* This week */}
         <Card>

@@ -1,25 +1,31 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState, ErrorState, Spinner } from '../components/ui';
+import { ReadinessCard } from '../components/ReadinessCard';
+import { MuscleHeatmap } from '../components/MuscleHeatmap';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
-import type { ProgressStats } from '../repository/Repository';
+import type { MuscleHeatmapCell, ProgressStats } from '../repository/Repository';
 import type { Exercise, PersonalRecord, Settings } from '../types';
 
 export function ProgressScreen() {
   const repository = useRepository();
   const navigate = useNavigate();
 
+  const [selectedMuscle, setSelectedMuscle] = useState<MuscleHeatmapCell | null>(null);
+
   const state = useAsync(async () => {
-    const [prs, exercises, settings, stats] = await Promise.all([
+    const [prs, exercises, settings, stats, readiness, heatmap] = await Promise.all([
       repository.getPersonalRecords(),
       repository.getExercises({ includeArchived: true }),
       repository.getSettings(),
       repository.getProgressStats(),
+      repository.getReadiness(),
+      repository.getMuscleHeatmap(),
     ]);
-    return { prs, exercises, settings, stats };
+    return { prs, exercises, settings, stats, readiness, heatmap };
   }, []);
 
   const exerciseById = useMemo(() => {
@@ -58,6 +64,52 @@ export function ProgressScreen() {
         />
       ) : (
         <div className="space-y-6 p-4">
+          {state.data?.readiness && <ReadinessCard readiness={state.data.readiness} />}
+
+          {state.data?.heatmap && state.data.heatmap.some((c) => c.volume > 0) && (
+            <section>
+              <h2 className="mb-2 text-sm font-semibold text-slate-300">
+                This week’s muscle volume
+              </h2>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                <MuscleHeatmap
+                  cells={state.data.heatmap}
+                  selectedId={selectedMuscle?.muscleGroupId ?? null}
+                  onSelect={setSelectedMuscle}
+                />
+                {selectedMuscle && (
+                  <div className="mt-3 border-t border-slate-800 pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{selectedMuscle.name}</span>
+                      <span className="text-sm text-slate-400">
+                        {formatNumber(selectedMuscle.volume)} {unit} this week
+                      </span>
+                    </div>
+                    {selectedMuscle.exercises.length > 0 ? (
+                      <ul className="mt-2 space-y-1 text-sm text-slate-400">
+                        {selectedMuscle.exercises.map((ex) => (
+                          <li key={ex.name} className="flex justify-between">
+                            <span>{ex.name}</span>
+                            <span className="tabular-nums">{formatNumber(ex.volume)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm text-slate-500">
+                        No direct work this week — tap another muscle.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {!selectedMuscle && (
+                  <p className="mt-2 text-center text-xs text-slate-500">
+                    Tap a muscle to see its exercises.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
           {stats && <ConsistencySection stats={stats} />}
 
           {prs.length > 0 && (
