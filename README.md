@@ -54,7 +54,7 @@ Built in phases per the product spec; each phase is checked before the next.
 
 - [x] **Phase 0 — Foundation & architecture.** Scaffold, full data-model types,
       Dexie schema, Repository interface + IndexedDB implementation, idempotent
-      seeding (11 muscle groups, 56 exercises, default settings, `local-user`),
+      seeding (11 muscle groups, 55 exercises, default settings, `local-user`),
       app shell (bottom tab bar / sidebar, 5 tabs, routing), PWA registration.
 - [x] **Phase 1 — Exercises & Routines.** Exercise database with instant
       search, muscle-group filter, detail view, add/edit custom exercises, and
@@ -62,7 +62,16 @@ Built in phases per the product spec; each phase is checked before the next.
       targets & rep ranges, notes, and duplicate. Pure search + reorder logic
       unit-tested; routine round-trips (incl. reorder & deep-copy duplicate)
       tested through the repository.
-- [ ] Phase 2 — Workout Mode + Beat Last Time
+- [x] **Phase 2 — Workout Mode + Beat Last Time.** Full-screen logger (own
+      route, no tab bar): intent selector (Push/Normal/Light/Deload), sets
+      pre-filled from last time, ± steppers with tap-to-type, ✓ complete,
+      warm-up toggle, add/remove set, swap/remove exercise, always-visible
+      LAST TIME reference, session timer, screen wake-lock, and immediate
+      (crash-safe) persistence with a Resume banner. The **Beat Last Time
+      engine** (reason-tagged green/amber/grey, honest e1RM detail, deload
+      suppression, warm-up exclusion) and the **plate calculator** are pure
+      and exhaustively unit-tested. Inline plate calc + non-blocking rest
+      timer (Pause / +30s / Skip, gentle buzz at zero).
 - [ ] Phase 3 — History, PRs, Workout Summary
 - [ ] Phase 4 — Nutrition
 - [ ] Phase 5 — Bodyweight, Dashboard, Analytics

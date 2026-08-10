@@ -6,6 +6,10 @@ import type {
   RoutineExercise,
   Settings,
   User,
+  Workout,
+  WorkoutExercise,
+  WorkoutIntent,
+  WorkoutSet,
 } from '../types';
 
 /**
@@ -58,6 +62,39 @@ export interface Repository {
   removeRoutineExercise(id: string): Promise<void>;
   /** Persist a new order for a routine's exercises (ids in desired order). */
   reorderRoutineExercises(routineId: string, orderedIds: string[]): Promise<void>;
+
+  // --- Workouts ------------------------------------------------------------
+  /** Start a session; if `routine_id` is set, its exercises are copied in. */
+  startWorkout(input: NewWorkoutInput): Promise<Workout>;
+  /** The most recent in-progress workout (completed_at null), if any. */
+  getActiveWorkout(): Promise<Workout | undefined>;
+  getWorkout(id: string): Promise<Workout | undefined>;
+  getWorkoutDetail(id: string): Promise<WorkoutDetail | undefined>;
+  updateWorkout(id: string, patch: WorkoutPatch): Promise<Workout>;
+  /** Close the session: stamp completed_at + duration_seconds. */
+  completeWorkout(id: string): Promise<Workout>;
+  /** Abandon and delete an in-progress session (and its children). */
+  cancelWorkout(id: string): Promise<void>;
+
+  // Workout exercises
+  addWorkoutExercise(workoutId: string, exerciseId: string): Promise<WorkoutExercise>;
+  updateWorkoutExercise(id: string, patch: { notes?: string }): Promise<WorkoutExercise>;
+  /** Replace the exercise (swap); existing sets for the row are cleared. */
+  swapWorkoutExercise(id: string, newExerciseId: string): Promise<WorkoutExercise>;
+  removeWorkoutExercise(id: string): Promise<void>;
+  reorderWorkoutExercises(workoutId: string, orderedIds: string[]): Promise<void>;
+
+  // Sets (written immediately — crash-safe)
+  addSet(workoutExerciseId: string, input?: NewSetInput): Promise<WorkoutSet>;
+  updateSet(id: string, patch: SetPatch): Promise<WorkoutSet>;
+  removeSet(id: string): Promise<void>;
+
+  /** The working + warm-up sets from the last COMPLETED session of an
+   * exercise (for LAST TIME display and Beat Last Time comparison). */
+  getLastSession(
+    exerciseId: string,
+    options?: { excludeWorkoutId?: string },
+  ): Promise<LastSession | undefined>;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */
@@ -103,4 +140,53 @@ export interface RoutineExerciseWithExercise extends RoutineExercise {
 export interface RoutineDetail {
   routine: Routine;
   items: RoutineExerciseWithExercise[];
+}
+
+/** Shape for starting a workout. */
+export interface NewWorkoutInput {
+  name: string;
+  routine_id?: string | null;
+  intent?: WorkoutIntent;
+}
+
+/** Editable workout fields (during or after a session). */
+export interface WorkoutPatch {
+  name?: string;
+  notes?: string;
+  intent?: WorkoutIntent;
+}
+
+/** Fields settable when adding a new set. */
+export interface NewSetInput {
+  weight?: number;
+  reps?: number;
+  is_warmup?: boolean;
+}
+
+/** Editable set fields. */
+export interface SetPatch {
+  weight?: number;
+  reps?: number;
+  rpe?: number | null;
+  is_warmup?: boolean;
+  is_completed?: boolean;
+  rest_seconds?: number | null;
+}
+
+/** A workout exercise joined with its Exercise and ordered sets. */
+export interface WorkoutExerciseWithSets extends WorkoutExercise {
+  exercise: Exercise | undefined;
+  sets: WorkoutSet[];
+}
+
+/** A workout plus its ordered, resolved exercises and their sets. */
+export interface WorkoutDetail {
+  workout: Workout;
+  exercises: WorkoutExerciseWithSets[];
+}
+
+/** The sets logged for an exercise in its most recent completed session. */
+export interface LastSession {
+  workout: Workout;
+  sets: WorkoutSet[];
 }

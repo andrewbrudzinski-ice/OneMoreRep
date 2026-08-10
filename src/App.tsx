@@ -5,6 +5,7 @@ import { useRepositoryContext } from './repository/repositoryContext';
 import { HomeScreen } from './screens/HomeScreen';
 import { WorkoutScreen } from './screens/WorkoutScreen';
 import { RoutineEditorScreen } from './screens/RoutineEditorScreen';
+import { WorkoutModeScreen } from './screens/WorkoutModeScreen';
 import { NutritionScreen } from './screens/NutritionScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { MoreScreen } from './screens/MoreScreen';
@@ -24,6 +25,8 @@ const router = createBrowserRouter([
       { path: 'more/exercises', element: <ExercisesScreen /> },
     ],
   },
+  // Workout Mode is full-screen (no tab bar) — the focused logging surface.
+  { path: '/session/:workoutId', element: <WorkoutModeScreen /> },
 ]);
 
 /** Gate the app on the repository being seeded/ready. */
