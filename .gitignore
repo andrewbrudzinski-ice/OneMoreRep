@@ -7,3 +7,6 @@ coverage
 dev-dist
 *.log
 .vite
+
+# temp browser smoke scripts
+_smoke*.mjs

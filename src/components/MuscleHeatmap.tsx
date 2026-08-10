@@ -6,12 +6,21 @@ import type { MuscleHeatmapCell } from '../repository/Repository';
  * just recognizable enough to answer "am I neglecting X?".
  */
 
-function shade(intensity: number): string {
-  const from = [30, 41, 59]; // slate-800
+/** Read a space-separated RGB-channel CSS variable, with a fallback. */
+function readChannels(name: string, fallback: [number, number, number]): [number, number, number] {
+  if (typeof window === 'undefined') return fallback;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const parts = raw.split(/\s+/).map(Number);
+  return parts.length === 3 && parts.every((n) => !Number.isNaN(n))
+    ? (parts as [number, number, number])
+    : fallback;
+}
+
+function shade(intensity: number, from: [number, number, number]): string {
   const to = [34, 197, 94]; // beat green
   const t = Math.max(0, Math.min(1, intensity));
   const c = from.map((f, i) => Math.round(f + (to[i]! - f) * t));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
+  return `rgb(${c[0]} ${c[1]} ${c[2]})`;
 }
 
 export function MuscleHeatmap({
@@ -26,6 +35,8 @@ export function MuscleHeatmap({
   const byId = new Map(cells.map((c) => [c.muscleGroupId, c]));
   const intensity = (id: string) => byId.get(id)?.intensity ?? 0;
   const isSel = (id: string) => selectedId === id;
+  // Cold (zero-volume) color follows the theme's slate-800.
+  const coldRGB = readChannels('--s-800', [30, 41, 59]);
 
   const region = (id: string, children: React.ReactNode) => {
     const cell = byId.get(id);
@@ -33,8 +44,8 @@ export function MuscleHeatmap({
       <g
         onClick={() => cell && onSelect(cell)}
         style={{ cursor: cell ? 'pointer' : 'default' }}
-        fill={shade(intensity(id))}
-        stroke={isSel(id) ? '#e2e8f0' : '#0f172a'}
+        fill={shade(intensity(id), coldRGB)}
+        className={isSel(id) ? 'stroke-slate-100' : 'stroke-slate-900'}
         strokeWidth={isSel(id) ? 1.5 : 0.75}
       >
         <title>{cell ? `${cell.name}: ${cell.volume}` : id}</title>
@@ -47,7 +58,7 @@ export function MuscleHeatmap({
     <div className="grid grid-cols-2 gap-2">
       <Silhouette label="Front">
         {/* head (outline only) */}
-        <circle cx={50} cy={16} r={9} fill="#1e293b" stroke="#0f172a" strokeWidth={0.75} />
+        <circle cx={50} cy={16} r={9} className="fill-slate-800 stroke-slate-900" strokeWidth={0.75} />
         {region(
           'mg-shoulders',
           <>

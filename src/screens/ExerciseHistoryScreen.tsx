@@ -96,7 +96,7 @@ export function ExerciseHistoryScreen() {
                   key={m.key}
                   onClick={() => setMetric(m.key)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                    metric === m.key ? 'bg-beat text-slate-950' : 'bg-slate-800 text-slate-300'
+                    metric === m.key ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
                   }`}
                 >
                   {m.label}

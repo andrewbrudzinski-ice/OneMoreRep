@@ -2,8 +2,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Deploy base path. Defaults to '/'; a subpath host (e.g. GitHub Project
+// Pages) sets VITE_BASE='/OneMoreRep/'. The PWA manifest scope/start_url and
+// the router basename both follow this automatically.
+const base = process.env.VITE_BASE ?? '/';
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -17,8 +23,7 @@ export default defineConfig({
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        // start_url / scope are derived from `base` by the plugin.
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -41,7 +46,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         cleanupOutdatedCaches: true,
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
       },
       devOptions: {
         enabled: false,

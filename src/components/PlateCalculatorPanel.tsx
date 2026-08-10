@@ -42,7 +42,7 @@ export function PlateCalculatorPanel({ weight, unit }: { weight: number; unit: U
                 key={b}
                 onClick={() => setBar(b)}
                 className={`rounded-lg px-2.5 py-1 text-xs ${
-                  bar === b ? 'bg-beat text-slate-950' : 'bg-slate-800 text-slate-300'
+                  bar === b ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
                 }`}
               >
                 {b} {unit}
