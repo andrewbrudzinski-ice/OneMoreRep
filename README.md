@@ -53,9 +53,13 @@ Regenerate PWA icons with `node scripts/generate-icons.mjs`.
 - **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs typecheck,
   lint, tests, and build on every push to `main` and every pull request.
 - **GitHub Pages** ([`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml))
-  is a manual (`workflow_dispatch`) deploy. To publish: repo **Settings → Pages →
-  Source: "GitHub Actions"**, then run the workflow from the **Actions** tab. It
-  builds with the repo subpath as the base and adds a `404.html` SPA fallback.
+  auto-deploys on every push to `main` (and can be run manually). It enables
+  Pages (Actions source) on first run via `enablement: true`, builds with the
+  repo subpath as the base, and adds a `404.html` SPA fallback for deep links.
+  The site lands at `https://<owner>.github.io/<repo>/`.
+  - If you had previously set **Settings → Pages → Source** to "Deploy from a
+    branch", switch it to **"GitHub Actions"** — serving the raw repo shows a
+    blank page (the source `index.html` points at a dev-only entry).
 - The deploy **base path is configurable** via `VITE_BASE` (defaults to `/`). The
   PWA manifest scope/start_url and the router basename both follow it, so the app
   works at `/` (custom domain, Netlify, Vercel) or at a subpath (`/OneMoreRep/`)
