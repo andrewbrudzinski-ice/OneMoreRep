@@ -1,9 +1,11 @@
 name: Deploy to GitHub Pages
 
-# Manual trigger so this never fails on main before Pages is enabled.
-# To use: repo Settings → Pages → Source: "GitHub Actions", then run this
-# workflow from the Actions tab.
+# Auto-deploys on every push to main, and can be run manually. The
+# `enablement: true` below turns Pages on (Actions source) the first time it
+# runs, so there's no manual Settings step to get wrong.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -31,15 +33,21 @@ jobs:
 
       - run: npm ci
 
+      # Project Pages serve at /<repo>/ — build with that as the base so asset
+      # URLs and the router basename line up. Derived from GITHUB_REPOSITORY so
+      # it's correct regardless of the triggering event.
       - name: Build (subpath base for Project Pages)
-        env:
-          VITE_BASE: /${{ github.event.repository.name }}/
-        run: npm run build
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          echo "Building with base /$REPO_NAME/"
+          VITE_BASE="/$REPO_NAME/" npm run build
 
-      - name: SPA fallback for client-side routes
+      - name: SPA fallback for client-side routes (deep links / refresh)
         run: cp dist/index.html dist/404.html
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
