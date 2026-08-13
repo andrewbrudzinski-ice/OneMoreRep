@@ -9,4 +9,4 @@ dev-dist
 .vite
 
 # temp browser smoke scripts
-_smoke*.mjs
+_*.mjs

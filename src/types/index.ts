@@ -51,6 +51,8 @@ export interface Settings extends BaseRecord {
   goal: Goal;
   /** When true, heavier weight (≥1 rep) always reads green. Default true. */
   load_always_green: boolean;
+  /** Internal: set once the starter routine templates have been seeded. */
+  starter_routines_seeded?: boolean;
 }
 
 // ---------------------------------------------------------------------------

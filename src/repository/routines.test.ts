@@ -13,6 +13,8 @@ describe('IndexedDBRepository — routines', () => {
     await db.open();
     repo = new IndexedDBRepository(db);
     await repo.seed();
+    // Start these tests from an empty routines list (ignore starter templates).
+    for (const r of await repo.getRoutines()) await repo.deleteRoutine(r.id);
   });
 
   afterEach(async () => {

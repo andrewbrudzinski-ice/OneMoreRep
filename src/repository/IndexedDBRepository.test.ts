@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FitnessDB } from '../db/database';
 import { IndexedDBRepository } from './IndexedDBRepository';
-import { EXERCISE_SEED, MUSCLE_GROUP_SEED } from '../db/seedData';
+import { EXERCISE_SEED, MUSCLE_GROUP_SEED, ROUTINE_SEED } from '../db/seedData';
 import { newId } from '../lib/id';
 
 /**
@@ -50,6 +50,29 @@ describe('IndexedDBRepository (Phase 0 foundation)', () => {
     const exercises = await repo.getExercises();
     expect(groups).toHaveLength(MUSCLE_GROUP_SEED.length);
     expect(exercises).toHaveLength(EXERCISE_SEED.length);
+  });
+
+  it('seeds starter routine templates once, and never re-adds them', async () => {
+    await repo.seed();
+    let routines = await repo.getRoutines();
+    expect(routines).toHaveLength(ROUTINE_SEED.length);
+
+    // Each template has its exercises wired up.
+    const push = routines.find((r) => r.name === 'Push Day');
+    const detail = await repo.getRoutineDetail(push!.id);
+    expect(detail?.items.length).toBeGreaterThan(0);
+    expect(detail?.items[0]?.exercise?.name).toBeTruthy();
+
+    // Re-seeding does not duplicate.
+    await repo.seed();
+    expect(await repo.getRoutines()).toHaveLength(ROUTINE_SEED.length);
+
+    // Deleting a template and re-seeding does NOT bring it back (guarded).
+    await repo.deleteRoutine(push!.id);
+    await repo.seed();
+    routines = await repo.getRoutines();
+    expect(routines).toHaveLength(ROUTINE_SEED.length - 1);
+    expect(routines.find((r) => r.name === 'Push Day')).toBeUndefined();
   });
 
   it('writes and reads a record back through the repository', async () => {
