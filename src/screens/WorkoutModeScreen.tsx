@@ -101,7 +101,10 @@ export function WorkoutModeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.data]);
 
-  if (state.loading) return <Spinner />;
+  // Only show the full-screen spinner on the FIRST load — during background
+  // refreshes (after adding/editing a set) keep the current screen mounted so
+  // it doesn't collapse and jump.
+  if (state.loading && !state.data) return <Spinner />;
   if (!state.data) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
@@ -482,31 +485,27 @@ function SetRow({
   }
 
   return (
-    <div
-      className={`flex items-center gap-2 rounded-lg px-1 py-1 ${
-        set.is_completed ? 'bg-slate-800/40' : ''
-      }`}
-    >
-      <button
-        onClick={toggleWarmup}
-        className={`h-7 w-7 shrink-0 rounded-md text-[10px] font-bold ${
-          set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'
-        }`}
-        title="Toggle warm-up"
-        aria-label="Toggle warm-up"
-      >
-        {set.is_warmup ? 'W' : set.set_number}
-      </button>
+    <div className={`rounded-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
+      {/* Line 1 — the core logging controls */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleWarmup}
+          className={`h-8 w-8 shrink-0 rounded-md text-xs font-bold ${
+            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
+          }`}
+          title="Toggle warm-up"
+          aria-label="Toggle warm-up"
+        >
+          {set.is_warmup ? 'W' : set.set_number}
+        </button>
 
-      <NumberField value={weight} step={weightStep} onChange={changeWeight} suffix={unit} />
-      <span className="text-slate-600">×</span>
-      <NumberField value={reps} step={1} onChange={changeReps} />
+        <NumberField value={weight} step={weightStep} onChange={changeWeight} suffix={unit} />
+        <span className="text-slate-600">×</span>
+        <NumberField value={reps} step={1} onChange={changeReps} />
 
-      <div className="ml-auto flex items-center gap-1.5">
-        {!set.is_warmup && <BeatBadge evaluation={evaluation} />}
         <button
           onClick={() => onComplete(!set.is_completed)}
-          className={`h-9 w-9 shrink-0 rounded-lg text-lg font-bold ${
+          className={`ml-auto h-9 w-9 shrink-0 rounded-lg text-lg font-bold ${
             set.is_completed
               ? 'bg-beat text-onaccent'
               : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
@@ -515,12 +514,33 @@ function SetRow({
         >
           ✓
         </button>
+      </div>
+
+      {/* Line 2 — status on the left, an always-visible Delete on the right */}
+      <div className="mt-1 flex items-center justify-between pl-10">
+        {set.is_warmup ? (
+          <span className="text-[11px] font-medium text-amber-400">Warm-up (not counted)</span>
+        ) : (
+          <BeatBadge evaluation={evaluation} />
+        )}
         <button
           onClick={remove}
-          className="h-9 w-6 shrink-0 text-slate-600 hover:text-red-400"
-          aria-label="Remove set"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+          aria-label="Delete set"
         >
-          ✕
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-3.5 w-3.5"
+            aria-hidden="true"
+          >
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+          </svg>
+          Delete
         </button>
       </div>
     </div>
@@ -542,7 +562,7 @@ function NumberField({
     <div className="flex items-center rounded-lg bg-slate-800">
       <button
         onClick={() => onChange(value - step)}
-        className="h-9 w-8 rounded-l-lg text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7 rounded-l-lg text-slate-300 hover:bg-slate-700"
         aria-label="Decrease"
       >
         −
@@ -552,12 +572,12 @@ function NumberField({
         inputMode="decimal"
         value={Number.isNaN(value) ? '' : value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-14 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
+        className="w-12 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
         aria-label={suffix ? `Weight in ${suffix}` : 'Reps'}
       />
       <button
         onClick={() => onChange(value + step)}
-        className="h-9 w-8 rounded-r-lg text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7 rounded-r-lg text-slate-300 hover:bg-slate-700"
         aria-label="Increase"
       >
         +
