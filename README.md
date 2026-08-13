@@ -71,7 +71,7 @@ Built in phases per the product spec; each phase is checked before the next.
 
 - [x] **Phase 0 — Foundation & architecture.** Scaffold, full data-model types,
       Dexie schema, Repository interface + IndexedDB implementation, idempotent
-      seeding (11 muscle groups, 55 exercises, default settings, `local-user`),
+      seeding (11 muscle groups, 79 exercises + 6 starter routines, default settings, `local-user`),
       app shell (bottom tab bar / sidebar, 5 tabs, routing), PWA registration.
 - [x] **Phase 1 — Exercises & Routines.** Exercise database with instant
       search, muscle-group filter, detail view, add/edit custom exercises, and

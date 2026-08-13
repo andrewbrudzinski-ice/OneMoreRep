@@ -1,4 +1,4 @@
-import type { Equipment, MovementType } from '../types';
+import type { DayOfWeek, Equipment, MovementType } from '../types';
 
 /**
  * Seed definitions. Muscle groups and system exercises use stable string
@@ -514,5 +514,309 @@ export const EXERCISE_SEED: ExerciseSeed[] = [
     equipment: 'bodyweight',
     movement_type: 'core',
     is_compound: false,
+  },
+  // --- Additional library ---------------------------------------------------
+  // Chest
+  {
+    id: 'ex-decline-barbell-bench-press',
+    name: 'Decline Barbell Bench Press',
+    primary: 'mg-chest',
+    secondary: ['mg-triceps'],
+    equipment: 'barbell',
+    movement_type: 'push',
+    is_compound: true,
+  },
+  {
+    id: 'ex-machine-chest-press',
+    name: 'Machine Chest Press',
+    primary: 'mg-chest',
+    secondary: ['mg-triceps', 'mg-shoulders'],
+    equipment: 'machine',
+    movement_type: 'push',
+    is_compound: true,
+  },
+  // Back
+  {
+    id: 'ex-barbell-shrug',
+    name: 'Barbell Shrug',
+    primary: 'mg-back',
+    secondary: ['mg-forearms'],
+    equipment: 'barbell',
+    movement_type: 'pull',
+    is_compound: false,
+  },
+  {
+    id: 'ex-chest-supported-row',
+    name: 'Chest-Supported Row',
+    primary: 'mg-back',
+    secondary: ['mg-biceps'],
+    equipment: 'machine',
+    movement_type: 'pull',
+    is_compound: true,
+  },
+  {
+    id: 'ex-straight-arm-pulldown',
+    name: 'Straight-Arm Pulldown',
+    primary: 'mg-back',
+    equipment: 'cable',
+    movement_type: 'pull',
+    is_compound: false,
+  },
+  {
+    id: 'ex-rack-pull',
+    name: 'Rack Pull',
+    primary: 'mg-back',
+    secondary: ['mg-glutes', 'mg-hamstrings', 'mg-forearms'],
+    equipment: 'barbell',
+    movement_type: 'hinge',
+    is_compound: true,
+  },
+  {
+    id: 'ex-dumbbell-pullover',
+    name: 'Dumbbell Pullover',
+    primary: 'mg-back',
+    secondary: ['mg-chest'],
+    equipment: 'dumbbell',
+    movement_type: 'pull',
+    is_compound: true,
+  },
+  // Shoulders
+  {
+    id: 'ex-machine-shoulder-press',
+    name: 'Machine Shoulder Press',
+    primary: 'mg-shoulders',
+    secondary: ['mg-triceps'],
+    equipment: 'machine',
+    movement_type: 'push',
+    is_compound: true,
+  },
+  {
+    id: 'ex-cable-lateral-raise',
+    name: 'Cable Lateral Raise',
+    primary: 'mg-shoulders',
+    equipment: 'cable',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  {
+    id: 'ex-upright-row',
+    name: 'Upright Row',
+    primary: 'mg-shoulders',
+    secondary: ['mg-back', 'mg-biceps'],
+    equipment: 'barbell',
+    movement_type: 'pull',
+    is_compound: true,
+  },
+  // Biceps
+  {
+    id: 'ex-incline-dumbbell-curl',
+    name: 'Incline Dumbbell Curl',
+    primary: 'mg-biceps',
+    equipment: 'dumbbell',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  {
+    id: 'ex-concentration-curl',
+    name: 'Concentration Curl',
+    primary: 'mg-biceps',
+    equipment: 'dumbbell',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  // Triceps
+  {
+    id: 'ex-overhead-rope-extension',
+    name: 'Overhead Rope Extension',
+    primary: 'mg-triceps',
+    equipment: 'cable',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  {
+    id: 'ex-bench-dip',
+    name: 'Bench Dip',
+    primary: 'mg-triceps',
+    secondary: ['mg-chest', 'mg-shoulders'],
+    equipment: 'bodyweight',
+    movement_type: 'push',
+    is_compound: false,
+  },
+  // Forearms
+  {
+    id: 'ex-reverse-curl',
+    name: 'Reverse Curl',
+    primary: 'mg-forearms',
+    secondary: ['mg-biceps'],
+    equipment: 'barbell',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  // Quads
+  {
+    id: 'ex-hack-squat',
+    name: 'Hack Squat',
+    primary: 'mg-quads',
+    secondary: ['mg-glutes'],
+    equipment: 'machine',
+    movement_type: 'squat',
+    is_compound: true,
+  },
+  {
+    id: 'ex-step-up',
+    name: 'Step-Up',
+    primary: 'mg-quads',
+    secondary: ['mg-glutes', 'mg-hamstrings'],
+    equipment: 'dumbbell',
+    movement_type: 'squat',
+    is_compound: true,
+  },
+  // Hamstrings / glutes
+  {
+    id: 'ex-sumo-deadlift',
+    name: 'Sumo Deadlift',
+    primary: 'mg-hamstrings',
+    secondary: ['mg-glutes', 'mg-quads', 'mg-back'],
+    equipment: 'barbell',
+    movement_type: 'hinge',
+    is_compound: true,
+  },
+  {
+    id: 'ex-cable-pull-through',
+    name: 'Cable Pull-Through',
+    primary: 'mg-glutes',
+    secondary: ['mg-hamstrings'],
+    equipment: 'cable',
+    movement_type: 'hinge',
+    is_compound: true,
+  },
+  {
+    id: 'ex-hip-abduction',
+    name: 'Hip Abduction Machine',
+    primary: 'mg-glutes',
+    equipment: 'machine',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  // Calves
+  {
+    id: 'ex-leg-press-calf-raise',
+    name: 'Leg Press Calf Raise',
+    primary: 'mg-calves',
+    equipment: 'machine',
+    movement_type: 'isolation',
+    is_compound: false,
+  },
+  // Abs
+  {
+    id: 'ex-sit-up',
+    name: 'Sit-Up',
+    primary: 'mg-abs',
+    equipment: 'bodyweight',
+    movement_type: 'core',
+    is_compound: false,
+  },
+  {
+    id: 'ex-bicycle-crunch',
+    name: 'Bicycle Crunch',
+    primary: 'mg-abs',
+    equipment: 'bodyweight',
+    movement_type: 'core',
+    is_compound: false,
+  },
+  {
+    id: 'ex-side-plank',
+    name: 'Side Plank',
+    primary: 'mg-abs',
+    equipment: 'bodyweight',
+    movement_type: 'core',
+    is_compound: false,
+  },
+];
+
+/** A starter routine template (seeded once on first launch). */
+export interface RoutineSeed {
+  id: string;
+  name: string;
+  notes?: string;
+  day_of_week?: DayOfWeek;
+  exercises: { exercise_id: string; sets: number; low: number; high: number }[];
+}
+
+export const ROUTINE_SEED: RoutineSeed[] = [
+  {
+    id: 'rt-push',
+    name: 'Push Day',
+    notes: 'Chest, shoulders & triceps',
+    exercises: [
+      { exercise_id: 'ex-barbell-bench-press', sets: 4, low: 6, high: 10 },
+      { exercise_id: 'ex-incline-dumbbell-press', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-overhead-press', sets: 3, low: 6, high: 10 },
+      { exercise_id: 'ex-lateral-raise', sets: 3, low: 12, high: 15 },
+      { exercise_id: 'ex-tricep-pushdown', sets: 3, low: 10, high: 15 },
+      { exercise_id: 'ex-overhead-tricep-extension', sets: 3, low: 10, high: 15 },
+    ],
+  },
+  {
+    id: 'rt-pull',
+    name: 'Pull Day',
+    notes: 'Back & biceps',
+    exercises: [
+      { exercise_id: 'ex-barbell-row', sets: 4, low: 6, high: 10 },
+      { exercise_id: 'ex-lat-pulldown', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-seated-cable-row', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-face-pull', sets: 3, low: 12, high: 15 },
+      { exercise_id: 'ex-barbell-curl', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-hammer-curl', sets: 3, low: 10, high: 15 },
+    ],
+  },
+  {
+    id: 'rt-legs',
+    name: 'Leg Day',
+    notes: 'Quads, hamstrings, glutes & calves',
+    exercises: [
+      { exercise_id: 'ex-back-squat', sets: 4, low: 5, high: 8 },
+      { exercise_id: 'ex-romanian-deadlift', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-leg-press', sets: 3, low: 10, high: 15 },
+      { exercise_id: 'ex-lying-leg-curl', sets: 3, low: 10, high: 15 },
+      { exercise_id: 'ex-standing-calf-raise', sets: 4, low: 12, high: 20 },
+    ],
+  },
+  {
+    id: 'rt-upper',
+    name: 'Upper Body',
+    notes: 'Upper/lower split — upper day',
+    exercises: [
+      { exercise_id: 'ex-barbell-bench-press', sets: 4, low: 6, high: 10 },
+      { exercise_id: 'ex-barbell-row', sets: 4, low: 6, high: 10 },
+      { exercise_id: 'ex-overhead-press', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-lat-pulldown', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-dumbbell-curl', sets: 3, low: 10, high: 15 },
+      { exercise_id: 'ex-tricep-pushdown', sets: 3, low: 10, high: 15 },
+    ],
+  },
+  {
+    id: 'rt-lower',
+    name: 'Lower Body',
+    notes: 'Upper/lower split — lower day',
+    exercises: [
+      { exercise_id: 'ex-back-squat', sets: 4, low: 5, high: 8 },
+      { exercise_id: 'ex-romanian-deadlift', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-bulgarian-split-squat', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-leg-extension', sets: 3, low: 12, high: 15 },
+      { exercise_id: 'ex-standing-calf-raise', sets: 4, low: 12, high: 20 },
+    ],
+  },
+  {
+    id: 'rt-full-body',
+    name: 'Full Body',
+    notes: 'A balanced whole-body session',
+    exercises: [
+      { exercise_id: 'ex-back-squat', sets: 3, low: 5, high: 8 },
+      { exercise_id: 'ex-barbell-bench-press', sets: 3, low: 6, high: 10 },
+      { exercise_id: 'ex-barbell-row', sets: 3, low: 6, high: 10 },
+      { exercise_id: 'ex-overhead-press', sets: 3, low: 8, high: 12 },
+      { exercise_id: 'ex-barbell-curl', sets: 3, low: 10, high: 15 },
+    ],
   },
 ];

@@ -1,6 +1,14 @@
 import { FitnessDB } from './database';
-import { EXERCISE_SEED, MUSCLE_GROUP_SEED } from './seedData';
-import { LOCAL_USER_ID, type Exercise, type MuscleGroup, type Settings, type User } from '../types';
+import { EXERCISE_SEED, MUSCLE_GROUP_SEED, ROUTINE_SEED } from './seedData';
+import {
+  LOCAL_USER_ID,
+  type Exercise,
+  type MuscleGroup,
+  type Routine,
+  type RoutineExercise,
+  type Settings,
+  type User,
+} from '../types';
 import { nowISO } from '../lib/id';
 
 /** Stable id for the settings singleton row. */
@@ -22,6 +30,7 @@ const DEFAULT_SETTINGS: Omit<Settings, 'created_at' | 'updated_at'> = {
   theme: 'dark',
   goal: 'general',
   load_always_green: true,
+  starter_routines_seeded: false,
 };
 
 /**
@@ -34,10 +43,14 @@ export async function seedDatabase(database: FitnessDB): Promise<void> {
 
   await database.transaction(
     'rw',
-    database.users,
-    database.settings,
-    database.muscle_groups,
-    database.exercises,
+    [
+      database.users,
+      database.settings,
+      database.muscle_groups,
+      database.exercises,
+      database.routines,
+      database.routine_exercises,
+    ],
     async () => {
       // User
       const existingUser = await database.users.get(LOCAL_USER_ID);
@@ -98,6 +111,56 @@ export async function seedDatabase(database: FitnessDB): Promise<void> {
       }));
       if (exercisesToAdd.length > 0) {
         await database.exercises.bulkAdd(exercisesToAdd);
+      }
+
+      // Starter routine templates — seeded exactly once (guarded by a flag on
+      // settings), so deleting them later doesn't cause them to reappear.
+      const settingsRow = await database.settings.get(SETTINGS_ID);
+      if (settingsRow && !settingsRow.starter_routines_seeded) {
+        const existingRoutineIds = new Set((await database.routines.toArray()).map((r) => r.id));
+        let sortOrder = (await database.routines.toArray()).reduce(
+          (max, r) => Math.max(max, r.sort_order + 1),
+          0,
+        );
+        const routinesToAdd: Routine[] = [];
+        const routineExercisesToAdd: RoutineExercise[] = [];
+        for (const seed of ROUTINE_SEED) {
+          if (existingRoutineIds.has(seed.id)) continue;
+          routinesToAdd.push({
+            id: seed.id,
+            user_id: LOCAL_USER_ID,
+            name: seed.name,
+            notes: seed.notes ?? '',
+            day_of_week: seed.day_of_week ?? null,
+            sort_order: sortOrder++,
+            created_at: ts,
+            updated_at: ts,
+          });
+          seed.exercises.forEach((ex, index) => {
+            routineExercisesToAdd.push({
+              id: `${seed.id}-re-${index}`,
+              user_id: LOCAL_USER_ID,
+              routine_id: seed.id,
+              exercise_id: ex.exercise_id,
+              sort_order: index,
+              target_sets: ex.sets,
+              target_reps_low: ex.low,
+              target_reps_high: ex.high,
+              notes: '',
+              created_at: ts,
+              updated_at: ts,
+            });
+          });
+        }
+        if (routinesToAdd.length > 0) {
+          await database.routines.bulkAdd(routinesToAdd);
+          await database.routine_exercises.bulkAdd(routineExercisesToAdd);
+        }
+        await database.settings.put({
+          ...settingsRow,
+          starter_routines_seeded: true,
+          updated_at: ts,
+        });
       }
     },
   );
