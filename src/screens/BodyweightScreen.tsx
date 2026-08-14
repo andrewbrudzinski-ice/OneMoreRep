@@ -99,10 +99,10 @@ export function BodyweightScreen() {
             <Stat label="Low" value={fmt(stats.low, unit)} />
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="-2xl border border-slate-800 bg-slate-900/50 p-4">
             <div className="mb-2 flex flex-wrap gap-3 text-xs text-slate-400">
               <Legend color="#334155" label="Raw" />
-              <Legend color="#22c55e" label="7-day avg" />
+              <Legend color="#8FE81E" label="7-day avg" />
               <Legend color="#38bdf8" label="30-day avg" />
             </div>
             <ResponsiveContainer width="100%" height={220}>
@@ -142,7 +142,7 @@ export function BodyweightScreen() {
                 <Line
                   type="monotone"
                   dataKey="avg7"
-                  stroke="#22c55e"
+                  stroke="#8FE81E"
                   strokeWidth={2.5}
                   dot={false}
                   isAnimationActive={false}
@@ -162,7 +162,7 @@ export function BodyweightScreen() {
 
           <div>
             <h2 className="mb-2 text-sm font-semibold text-slate-300">Weigh-ins</h2>
-            <ul className="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
+            <ul className="divide-y divide-slate-800 overflow-hidden -2xl border border-slate-800">
               {reversed.map((entry) => (
                 <li key={entry.id} className="flex items-center gap-3 px-4 py-3">
                   <button className="min-w-0 flex-1 text-left" onClick={() => setEditing(entry)}>
@@ -176,7 +176,7 @@ export function BodyweightScreen() {
                   </button>
                   <button
                     onClick={() => remove(entry)}
-                    className="h-8 w-8 shrink-0 text-slate-600 hover:text-red-400"
+                    className="h-8 w-8 shrink-0 text-slate-600 hover:text-fatigued"
                     aria-label="Delete weigh-in"
                   >
                     ✕
@@ -214,7 +214,7 @@ function fmtDelta(value: number | null, unit: string): string {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+    <div className="-xl border border-slate-800 bg-slate-900/50 p-3">
       <div className="text-sm font-bold tabular-nums">{value}</div>
       <div className="mt-0.5 text-[11px] text-slate-400">{label}</div>
     </div>
@@ -224,7 +224,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Legend({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="inline-block h-2 w-4 rounded-full" style={{ background: color }} />
+      <span className="inline-block h-2 w-4 -full" style={{ background: color }} />
       {label}
     </span>
   );

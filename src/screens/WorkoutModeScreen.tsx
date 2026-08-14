@@ -163,7 +163,7 @@ export function WorkoutModeScreen() {
         <IntentSelector value={workout.intent} onChange={setIntent} />
 
         {detail.exercises.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
+          <div className="-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
             No exercises yet. Add one to start logging.
           </div>
         ) : (
@@ -260,7 +260,7 @@ function IntentSelector({
         <button
           key={intent.value}
           onClick={() => onChange(intent.value)}
-          className={`flex-1 rounded-xl border px-2 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 -xl border px-2 py-2 text-xs font-medium transition-colors ${
             value === intent.value
               ? 'border-beat bg-beat/15 text-beat'
               : 'border-slate-700 bg-slate-900 text-slate-300'
@@ -325,7 +325,7 @@ function ExerciseBlock({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className="-2xl border border-slate-800 bg-slate-900/50 p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
@@ -334,13 +334,13 @@ function ExerciseBlock({
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="h-8 w-8 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+            className="h-8 w-8 -lg bg-slate-800 text-slate-300 hover:bg-slate-700"
             aria-label="Exercise menu"
           >
             ⋯
           </button>
           {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-xl">
+            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden -xl border border-slate-700 bg-slate-900 text-sm shadow-xl">
               <button
                 onClick={() => {
                   setSwapping(true);
@@ -355,7 +355,7 @@ function ExerciseBlock({
                   remove();
                   setMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left text-red-400 hover:bg-slate-800"
+                className="block w-full px-3 py-2 text-left text-fatigued hover:bg-slate-800"
               >
                 Remove
               </button>
@@ -365,7 +365,7 @@ function ExerciseBlock({
       </div>
 
       {suggestion?.suggest && suggestion.reason && (
-        <div className="mt-3 rounded-xl border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
+        <div className="mt-3 -xl border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
           💡 {suggestion.reason}
         </div>
       )}
@@ -387,7 +387,7 @@ function ExerciseBlock({
 
       <button
         onClick={addSet}
-        className="mt-2 w-full rounded-lg border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
+        className="mt-2 w-full -lg border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
       >
         + Add set
       </button>
@@ -485,12 +485,12 @@ function SetRow({
   }
 
   return (
-    <div className={`rounded-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
+    <div className={`-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
       {/* Line 1 — the core logging controls */}
       <div className="flex items-center gap-2">
         <button
           onClick={toggleWarmup}
-          className={`h-8 w-8 shrink-0 rounded-md text-xs font-bold ${
+          className={`h-8 w-8 shrink-0 -md text-xs font-bold ${
             set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
           }`}
           title="Toggle warm-up"
@@ -505,9 +505,9 @@ function SetRow({
 
         <button
           onClick={() => onComplete(!set.is_completed)}
-          className={`ml-auto h-9 w-9 shrink-0 rounded-lg text-lg font-bold ${
+          className={`ml-auto h-9 w-9 shrink-0 -lg text-lg font-bold ${
             set.is_completed
-              ? 'bg-beat text-onaccent'
+              ? 'bg-beat text-on-accent'
               : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
           }`}
           aria-label={set.is_completed ? 'Mark incomplete' : 'Complete set'}
@@ -525,7 +525,7 @@ function SetRow({
         )}
         <button
           onClick={remove}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+          className="flex items-center gap-1 -md px-2 py-1 text-xs text-slate-500 hover:bg-fatigued/10 hover:text-fatigued"
           aria-label="Delete set"
         >
           <svg
@@ -559,10 +559,10 @@ function NumberField({
   suffix?: string;
 }) {
   return (
-    <div className="flex items-center rounded-lg bg-slate-800">
+    <div className="flex items-center -lg bg-slate-800">
       <button
         onClick={() => onChange(value - step)}
-        className="h-9 w-7 rounded-l-lg text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7 -l-lg text-slate-300 hover:bg-slate-700"
         aria-label="Decrease"
       >
         −
@@ -577,7 +577,7 @@ function NumberField({
       />
       <button
         onClick={() => onChange(value + step)}
-        className="h-9 w-7 rounded-r-lg text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7 -r-lg text-slate-300 hover:bg-slate-700"
         aria-label="Increase"
       >
         +
@@ -619,7 +619,7 @@ function TimerButton({ onClick, children }: { onClick: () => void; children: str
   return (
     <button
       onClick={onClick}
-      className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+      className="-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
     >
       {children}
     </button>

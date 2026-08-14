@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import type { BeatEvaluation } from '../lib/beatLastTime';
 
+// The Beat / Matched / Down triple maps to accent / moderate / secondary ink —
+// no red, no emoji; a small square swatch carries the status color.
 const STATUS_META: Record<
   BeatEvaluation['status'],
   { label: string; dot: string; text: string; ring: string }
 > = {
-  beat: { label: 'Beat', dot: 'bg-beat', text: 'text-beat', ring: 'border-beat/40' },
-  matched: { label: 'Matched', dot: 'bg-matched', text: 'text-matched', ring: 'border-matched/40' },
-  down: { label: 'Down', dot: 'bg-down', text: 'text-down', ring: 'border-slate-600' },
-  neutral: { label: '', dot: 'bg-slate-600', text: 'text-slate-400', ring: 'border-slate-700' },
+  beat: { label: 'Beat', dot: 'bg-accent', text: 'text-accent', ring: 'border-accent/40' },
+  matched: { label: 'Matched', dot: 'bg-moderate', text: 'text-moderate', ring: 'border-moderate/40' },
+  down: { label: 'Down', dot: 'bg-ink2', text: 'text-ink2', ring: 'border-white/[0.18]' },
+  neutral: { label: '', dot: 'bg-ink4', text: 'text-ink4', ring: 'border-white/[0.12]' },
 };
 
 /**
@@ -22,21 +24,20 @@ export function BeatBadge({ evaluation }: { evaluation: BeatEvaluation | null })
     return <span className="text-xs text-slate-600">—</span>;
   }
   const meta = STATUS_META[evaluation.status];
-  const emoji = evaluation.status === 'beat' ? '🟢' : evaluation.status === 'matched' ? '🟡' : '⚪';
 
   return (
     <button
       type="button"
       onClick={() => evaluation.detail && setOpen((o) => !o)}
-      className={`inline-flex flex-col items-end gap-0.5 rounded-lg border px-2 py-1 text-right ${meta.ring}`}
+      className={`inline-flex flex-col items-end gap-0.5 border px-2 py-1 text-right ${meta.ring}`}
     >
-      <span className={`flex items-center gap-1 text-xs font-semibold ${meta.text}`}>
-        <span aria-hidden>{emoji}</span>
+      <span className={`flex items-center gap-1.5 text-xs font-extrabold ${meta.text}`}>
+        <span aria-hidden className={`h-2 w-2 ${meta.dot}`} />
         {meta.label}
         {evaluation.tag && <span className="font-normal">· {evaluation.tag}</span>}
       </span>
       {open && evaluation.detail && (
-        <span className="text-[10px] font-normal text-slate-400">e1RM {evaluation.detail}</span>
+        <span className="text-[10px] font-normal text-ink2">e1RM {evaluation.detail}</span>
       )}
     </button>
   );

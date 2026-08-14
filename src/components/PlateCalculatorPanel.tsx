@@ -19,7 +19,7 @@ export function PlateCalculatorPanel({ weight, unit }: { weight: number; unit: U
   const result = useMemo(() => computePlates(weight, bar, plates), [weight, bar, plates]);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40">
+    <div className="-xl border border-slate-800 bg-slate-900/40">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -41,8 +41,8 @@ export function PlateCalculatorPanel({ weight, unit }: { weight: number; unit: U
               <button
                 key={b}
                 onClick={() => setBar(b)}
-                className={`rounded-lg px-2.5 py-1 text-xs ${
-                  bar === b ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
+                className={`-lg px-2.5 py-1 text-xs ${
+                  bar === b ? 'bg-beat text-on-accent' : 'bg-slate-800 text-slate-300'
                 }`}
               >
                 {b} {unit}
@@ -61,7 +61,7 @@ export function PlateCalculatorPanel({ weight, unit }: { weight: number; unit: U
                     Array.from({ length: p.count }).map((_, i) => (
                       <span
                         key={`${p.plate}-${i}`}
-                        className="rounded-md bg-slate-800 px-2 py-1 text-xs font-medium tabular-nums text-slate-100"
+                        className="-md bg-slate-800 px-2 py-1 text-xs font-medium tabular-nums text-slate-100"
                       >
                         {p.plate}
                       </span>

@@ -167,7 +167,7 @@ function SettingsForm({
           value={rest}
           onChange={(e) => setRest(e.target.value)}
         />
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+        <label className="flex items-center justify-between gap-3 -xl border border-slate-800 bg-slate-900/50 p-3">
           <span className="text-sm">
             <span className="font-medium">Load always green</span>
             <span className="mt-0.5 block text-xs text-slate-500">

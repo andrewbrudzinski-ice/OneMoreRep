@@ -127,12 +127,12 @@ export function ExercisesScreen() {
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{ex.name}</span>
                     {ex.is_custom && (
-                      <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+                      <span className=" bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
                         custom
                       </span>
                     )}
                     {ex.is_archived && (
-                      <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500">
+                      <span className=" bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500">
                         archived
                       </span>
                     )}
