@@ -126,6 +126,9 @@ export interface Repository {
   getExerciseHistory(exerciseId: string): Promise<ExerciseHistory | undefined>;
   /** Post-completion summary: counts, volume, vs-last, and new PRs. */
   getWorkoutSummary(workoutId: string): Promise<WorkoutSummaryData | undefined>;
+  /** Completed workouts, newest first, with lightweight per-session stats for
+   * the workout-history list. */
+  getWorkoutHistory(): Promise<WorkoutHistoryEntry[]>;
 
   // --- Nutrition: foods ----------------------------------------------------
   getFoods(): Promise<Food[]>;
@@ -301,6 +304,14 @@ export interface ExerciseHistory {
   bestSetVolume: number;
   bestWorkoutVolume: number;
   lifetimeVolume: number;
+}
+
+/** One completed session in the workout-history list. */
+export interface WorkoutHistoryEntry {
+  workout: Workout;
+  exerciseCount: number;
+  workingSetCount: number;
+  volume: number;
 }
 
 /** Everything the post-workout summary screen needs. */
