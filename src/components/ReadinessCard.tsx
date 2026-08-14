@@ -3,7 +3,7 @@ import { READINESS_DISCLAIMER, type ReadinessLevel, type ReadinessResult } from 
 const LEVELS: ReadinessLevel[] = ['fresh', 'moderate', 'fatigued'];
 
 const LEVEL_META: Record<ReadinessLevel, { word: string; label: string; color: string }> = {
-  fresh: { word: 'FRESH', label: 'Fresh', color: '#8FE81E' },
+  fresh: { word: 'PRIMED', label: 'Primed', color: '#8FE81E' },
   moderate: { word: 'MODERATE', label: 'Moderate', color: '#F2B33D' },
   fatigued: { word: 'FATIGUED', label: 'Fatigued', color: '#FB923C' },
 };

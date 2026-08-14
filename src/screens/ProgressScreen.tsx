@@ -11,7 +11,7 @@ import type { MuscleHeatmapCell, ProgressStats } from '../repository/Repository'
 import type { Exercise, PersonalRecord, Settings } from '../types';
 
 const LEVEL_META: Record<ReadinessLevel, { word: string; color: string }> = {
-  fresh: { word: 'FRESH', color: '#8FE81E' },
+  fresh: { word: 'PRIMED', color: '#8FE81E' },
   moderate: { word: 'MODERATE', color: '#F2B33D' },
   fatigued: { word: 'FATIGUED', color: '#FB923C' },
 };

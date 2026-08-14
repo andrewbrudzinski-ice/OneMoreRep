@@ -51,7 +51,7 @@ export function HomeScreen() {
   if (state.error) {
     return (
       <>
-        <ScreenHeader kicker="Chase green" title="Home" />
+        <ScreenHeader kicker="Chase green" title="Ready to train?" />
         <ErrorState error={state.error} onRetry={state.reload} />
       </>
     );
@@ -59,7 +59,7 @@ export function HomeScreen() {
   if (state.loading || !state.data) {
     return (
       <>
-        <ScreenHeader kicker="Chase green" title="Home" />
+        <ScreenHeader kicker="Chase green" title="Ready to train?" />
         <Spinner />
       </>
     );
@@ -90,7 +90,7 @@ export function HomeScreen() {
 
   return (
     <>
-      <ScreenHeader kicker="Chase green" title={`Hey, ${d.userName}`} />
+      <ScreenHeader kicker="Chase green" title="Ready to train?" />
 
       {/* Readiness — the poster element */}
       <div className="border-b-2 border-white/[0.15]">
