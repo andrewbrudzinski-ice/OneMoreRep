@@ -78,6 +78,8 @@ export function WorkoutModeScreen() {
   useEffect(() => {
     if (!state.data) return;
     const { detail, lastByExercise } = state.data;
+    // Don't auto-fill rows when editing a finished session.
+    if (detail.workout.completed_at !== null) return;
     const toSeed = detail.exercises.filter(
       (e) => e.sets.length === 0 && !seededRef.current.has(e.id),
     );
@@ -116,6 +118,9 @@ export function WorkoutModeScreen() {
 
   const { detail, settings, lastByExercise, suggestionByExercise, restByExercise } = state.data;
   const { workout } = detail;
+  // A completed workout opens in edit mode: no timer, no auto-seed, "Done"
+  // recomputes PRs instead of "Finish" closing the session.
+  const editing = workout.completed_at !== null;
 
   async function setIntent(intent: WorkoutIntent) {
     await repository.updateWorkout(workoutId, { intent });
@@ -135,7 +140,8 @@ export function WorkoutModeScreen() {
       setId,
       willComplete ? { is_completed: true, rest_seconds: restDuration } : { is_completed: false },
     );
-    if (willComplete) {
+    // Editing a past session shouldn't kick off a live rest timer.
+    if (willComplete && !editing) {
       rest.start(restDuration);
     }
     state.reload();
@@ -151,15 +157,43 @@ export function WorkoutModeScreen() {
     navigate('/workout');
   }
 
+  // Edit mode: everything is persisted immediately, so "Done" just rebuilds the
+  // PR cache (a lowered/added set can change the record history) and returns.
+  async function doneEditing() {
+    await repository.recomputePersonalRecords();
+    navigate(`/summary/${workoutId}`);
+  }
+
+  async function changeDate(date: string) {
+    if (!date) return;
+    await repository.updateWorkoutDate(workoutId, date);
+    state.reload();
+  }
+
+  async function changeNotes(notes: string) {
+    await repository.updateWorkout(workoutId, { notes });
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 pb-32">
       <SessionHeader
         name={workout.name}
         startedAt={workout.started_at}
+        editing={editing}
         onFinish={() => setFinishing(true)}
+        onDone={doneEditing}
       />
 
       <div className="mx-auto max-w-2xl space-y-4 p-4">
+        {editing && (
+          <EditControls
+            date={(workout.completed_at ?? workout.started_at).slice(0, 10)}
+            notes={workout.notes}
+            onChangeDate={changeDate}
+            onChangeNotes={changeNotes}
+          />
+        )}
+
         <IntentSelector value={workout.intent} onChange={setIntent} />
 
         {detail.exercises.length === 0 ? (
@@ -176,6 +210,7 @@ export function WorkoutModeScreen() {
               rememberedRest={restByExercise.get(item.exercise_id) ?? null}
               settings={settings}
               intent={workout.intent}
+              editing={editing}
               onChanged={() => state.reload()}
               onCompleteSet={onCompleteSet}
             />
@@ -191,7 +226,7 @@ export function WorkoutModeScreen() {
 
       {picking && <ExercisePicker onPick={addExercise} onClose={() => setPicking(false)} />}
 
-      {finishing && (
+      {finishing && !editing && (
         <Modal
           title="Finish workout?"
           onClose={() => setFinishing(false)}
@@ -223,27 +258,83 @@ export function WorkoutModeScreen() {
 function SessionHeader({
   name,
   startedAt,
+  editing,
   onFinish,
+  onDone,
 }: {
   name: string;
   startedAt: string;
+  editing: boolean;
   onFinish: () => void;
+  onDone: () => void;
 }) {
   const elapsed = useElapsedSeconds(startedAt);
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-base font-bold">{name}</div>
-          <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
-            <span aria-hidden>⏱</span> {formatDuration(elapsed)}
-          </div>
+          {editing && (
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-accent">
+              Editing workout
+            </div>
+          )}
+          <div className="truncate text-base font-extrabold">{name}</div>
+          {!editing && (
+            <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
+              <span aria-hidden>⏱</span> {formatDuration(elapsed)}
+            </div>
+          )}
         </div>
-        <Button variant="primary" onClick={onFinish}>
-          Finish
-        </Button>
+        {editing ? (
+          <Button variant="primary" onClick={onDone}>
+            Done
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={onFinish}>
+            Finish
+          </Button>
+        )}
       </div>
     </header>
+  );
+}
+
+function EditControls({
+  date,
+  notes,
+  onChangeDate,
+  onChangeNotes,
+}: {
+  date: string;
+  notes: string;
+  onChangeDate: (date: string) => void;
+  onChangeNotes: (notes: string) => void;
+}) {
+  const [noteDraft, setNoteDraft] = useState(notes);
+  return (
+    <div className="space-y-3 border border-slate-800 bg-slate-900/50 p-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-slate-400">Date</span>
+        <input
+          type="date"
+          value={date}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => onChangeDate(e.target.value)}
+          className="w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-slate-400">Notes</span>
+        <textarea
+          value={noteDraft}
+          rows={2}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          onBlur={() => onChangeNotes(noteDraft.trim())}
+          placeholder="How did it go?"
+          className="w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent"
+        />
+      </label>
+    </div>
   );
 }
 
@@ -280,6 +371,7 @@ function ExerciseBlock({
   rememberedRest,
   settings,
   intent,
+  editing,
   onChanged,
   onCompleteSet,
 }: {
@@ -289,6 +381,7 @@ function ExerciseBlock({
   rememberedRest: number | null;
   settings: Settings;
   intent: WorkoutIntent;
+  editing: boolean;
   onChanged: () => void;
   onCompleteSet: (setId: string, willComplete: boolean, exerciseRest: number | null) => void;
 }) {
@@ -309,7 +402,13 @@ function ExerciseBlock({
   async function addSet() {
     const working = item.sets.filter((s) => !s.is_warmup);
     const templ = working[working.length - 1];
-    await repository.addSet(item.id, { weight: templ?.weight ?? 0, reps: templ?.reps ?? 0 });
+    const created = await repository.addSet(item.id, {
+      weight: templ?.weight ?? 0,
+      reps: templ?.reps ?? 0,
+    });
+    // In edit mode a new set is part of a finished session, so mark it done —
+    // otherwise it wouldn't count toward volume or PRs.
+    if (editing) await repository.updateSet(created.id, { is_completed: true });
     onChanged();
   }
 
