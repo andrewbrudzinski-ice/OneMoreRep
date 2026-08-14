@@ -12,7 +12,7 @@ interface MenuItem {
 
 const ITEMS: MenuItem[] = [
   { label: 'Exercise Database', note: 'Browse, search & add custom exercises', to: '/more/exercises' },
-  { label: 'Settings', note: 'Targets, units, rest timer, theme, goal', to: '/more/settings' },
+  { label: 'Settings', note: 'Targets, units, rest timer, goal', to: '/more/settings' },
   { label: 'Export / Import', note: 'Back up and restore your data (JSON)', to: '/more/data' },
   { label: 'About', note: 'OneMoreRep · local-first fitness tracker', action: 'about' },
 ];

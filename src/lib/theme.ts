@@ -1,21 +1,15 @@
-import type { Theme } from '../types';
-
 /**
- * Apply the chosen theme to the document root. The app is dark-first; this
- * toggles the Tailwind `dark` class and the CSS color-scheme so the setting
- * persists and native controls match.
+ * The app ships dark-only. This pins the document to the dark palette and the
+ * matching chrome color regardless of any stored preference. Kept as a function
+ * (and the `theme` setting is kept in the data model) so a future light ramp
+ * can reintroduce a real choice without a migration.
  */
-export function applyTheme(theme: Theme): void {
+export function applyTheme(): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  const prefersDark =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-color-scheme: dark)').matches !== false;
-  const dark = theme === 'dark' || (theme === 'system' && prefersDark);
-  root.classList.toggle('dark', dark);
-  root.style.colorScheme = dark ? 'dark' : 'light';
+  root.classList.add('dark');
+  root.style.colorScheme = 'dark';
 
-  // Match the browser/PWA chrome color to the theme's page background.
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#0f172a' : '#f8fafc');
+  if (meta) meta.setAttribute('content', '#0D1014');
 }

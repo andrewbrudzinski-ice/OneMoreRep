@@ -95,13 +95,13 @@ const router = createBrowserRouter([
 
 /** Gate the app on the repository being seeded/ready. */
 function Gate() {
-  const { repository, ready, error } = useRepositoryContext();
+  const { ready, error } = useRepositoryContext();
 
-  // Apply the saved theme once data is ready.
+  // Dark-only: pin the palette once the app is ready.
   useEffect(() => {
     if (!ready) return;
-    void repository.getSettings().then((s) => applyTheme(s.theme));
-  }, [ready, repository]);
+    applyTheme();
+  }, [ready]);
 
   if (error) {
     return (
