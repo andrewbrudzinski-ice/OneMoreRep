@@ -78,6 +78,8 @@ export function WorkoutModeScreen() {
   useEffect(() => {
     if (!state.data) return;
     const { detail, lastByExercise } = state.data;
+    // Don't auto-fill rows when editing a finished session.
+    if (detail.workout.completed_at !== null) return;
     const toSeed = detail.exercises.filter(
       (e) => e.sets.length === 0 && !seededRef.current.has(e.id),
     );
@@ -116,6 +118,9 @@ export function WorkoutModeScreen() {
 
   const { detail, settings, lastByExercise, suggestionByExercise, restByExercise } = state.data;
   const { workout } = detail;
+  // A completed workout opens in edit mode: no timer, no auto-seed, "Done"
+  // recomputes PRs instead of "Finish" closing the session.
+  const editing = workout.completed_at !== null;
 
   async function setIntent(intent: WorkoutIntent) {
     await repository.updateWorkout(workoutId, { intent });
@@ -135,7 +140,8 @@ export function WorkoutModeScreen() {
       setId,
       willComplete ? { is_completed: true, rest_seconds: restDuration } : { is_completed: false },
     );
-    if (willComplete) {
+    // Editing a past session shouldn't kick off a live rest timer.
+    if (willComplete && !editing) {
       rest.start(restDuration);
     }
     state.reload();
@@ -151,19 +157,47 @@ export function WorkoutModeScreen() {
     navigate('/workout');
   }
 
+  // Edit mode: everything is persisted immediately, so "Done" just rebuilds the
+  // PR cache (a lowered/added set can change the record history) and returns.
+  async function doneEditing() {
+    await repository.recomputePersonalRecords();
+    navigate(`/summary/${workoutId}`);
+  }
+
+  async function changeDate(date: string) {
+    if (!date) return;
+    await repository.updateWorkoutDate(workoutId, date);
+    state.reload();
+  }
+
+  async function changeNotes(notes: string) {
+    await repository.updateWorkout(workoutId, { notes });
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 pb-32">
       <SessionHeader
         name={workout.name}
         startedAt={workout.started_at}
+        editing={editing}
         onFinish={() => setFinishing(true)}
+        onDone={doneEditing}
       />
 
       <div className="mx-auto max-w-2xl space-y-4 p-4">
+        {editing && (
+          <EditControls
+            date={(workout.completed_at ?? workout.started_at).slice(0, 10)}
+            notes={workout.notes}
+            onChangeDate={changeDate}
+            onChangeNotes={changeNotes}
+          />
+        )}
+
         <IntentSelector value={workout.intent} onChange={setIntent} />
 
         {detail.exercises.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
+          <div className=" border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
             No exercises yet. Add one to start logging.
           </div>
         ) : (
@@ -176,6 +210,7 @@ export function WorkoutModeScreen() {
               rememberedRest={restByExercise.get(item.exercise_id) ?? null}
               settings={settings}
               intent={workout.intent}
+              editing={editing}
               onChanged={() => state.reload()}
               onCompleteSet={onCompleteSet}
             />
@@ -191,7 +226,7 @@ export function WorkoutModeScreen() {
 
       {picking && <ExercisePicker onPick={addExercise} onClose={() => setPicking(false)} />}
 
-      {finishing && (
+      {finishing && !editing && (
         <Modal
           title="Finish workout?"
           onClose={() => setFinishing(false)}
@@ -223,27 +258,83 @@ export function WorkoutModeScreen() {
 function SessionHeader({
   name,
   startedAt,
+  editing,
   onFinish,
+  onDone,
 }: {
   name: string;
   startedAt: string;
+  editing: boolean;
   onFinish: () => void;
+  onDone: () => void;
 }) {
   const elapsed = useElapsedSeconds(startedAt);
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-base font-bold">{name}</div>
-          <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
-            <span aria-hidden>⏱</span> {formatDuration(elapsed)}
-          </div>
+          {editing && (
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-accent">
+              Editing workout
+            </div>
+          )}
+          <div className="truncate text-base font-extrabold">{name}</div>
+          {!editing && (
+            <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
+              <span aria-hidden>⏱</span> {formatDuration(elapsed)}
+            </div>
+          )}
         </div>
-        <Button variant="primary" onClick={onFinish}>
-          Finish
-        </Button>
+        {editing ? (
+          <Button variant="primary" onClick={onDone}>
+            Done
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={onFinish}>
+            Finish
+          </Button>
+        )}
       </div>
     </header>
+  );
+}
+
+function EditControls({
+  date,
+  notes,
+  onChangeDate,
+  onChangeNotes,
+}: {
+  date: string;
+  notes: string;
+  onChangeDate: (date: string) => void;
+  onChangeNotes: (notes: string) => void;
+}) {
+  const [noteDraft, setNoteDraft] = useState(notes);
+  return (
+    <div className="space-y-3 border border-slate-800 bg-slate-900/50 p-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-slate-400">Date</span>
+        <input
+          type="date"
+          value={date}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => onChangeDate(e.target.value)}
+          className="w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-slate-400">Notes</span>
+        <textarea
+          value={noteDraft}
+          rows={2}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          onBlur={() => onChangeNotes(noteDraft.trim())}
+          placeholder="How did it go?"
+          className="w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent"
+        />
+      </label>
+    </div>
   );
 }
 
@@ -260,7 +351,7 @@ function IntentSelector({
         <button
           key={intent.value}
           onClick={() => onChange(intent.value)}
-          className={`flex-1 rounded-xl border px-2 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1  border px-2 py-2 text-xs font-medium transition-colors ${
             value === intent.value
               ? 'border-beat bg-beat/15 text-beat'
               : 'border-slate-700 bg-slate-900 text-slate-300'
@@ -280,6 +371,7 @@ function ExerciseBlock({
   rememberedRest,
   settings,
   intent,
+  editing,
   onChanged,
   onCompleteSet,
 }: {
@@ -289,6 +381,7 @@ function ExerciseBlock({
   rememberedRest: number | null;
   settings: Settings;
   intent: WorkoutIntent;
+  editing: boolean;
   onChanged: () => void;
   onCompleteSet: (setId: string, willComplete: boolean, exerciseRest: number | null) => void;
 }) {
@@ -309,7 +402,13 @@ function ExerciseBlock({
   async function addSet() {
     const working = item.sets.filter((s) => !s.is_warmup);
     const templ = working[working.length - 1];
-    await repository.addSet(item.id, { weight: templ?.weight ?? 0, reps: templ?.reps ?? 0 });
+    const created = await repository.addSet(item.id, {
+      weight: templ?.weight ?? 0,
+      reps: templ?.reps ?? 0,
+    });
+    // In edit mode a new set is part of a finished session, so mark it done —
+    // otherwise it wouldn't count toward volume or PRs.
+    if (editing) await repository.updateSet(created.id, { is_completed: true });
     onChanged();
   }
 
@@ -325,7 +424,7 @@ function ExerciseBlock({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className=" border border-slate-800 bg-slate-900/50 p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
@@ -334,13 +433,13 @@ function ExerciseBlock({
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="h-8 w-8 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+            className="h-8 w-8  bg-slate-800 text-slate-300 hover:bg-slate-700"
             aria-label="Exercise menu"
           >
             ⋯
           </button>
           {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-xl">
+            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden  border border-slate-700 bg-slate-900 text-sm shadow-xl">
               <button
                 onClick={() => {
                   setSwapping(true);
@@ -355,7 +454,7 @@ function ExerciseBlock({
                   remove();
                   setMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left text-red-400 hover:bg-slate-800"
+                className="block w-full px-3 py-2 text-left text-fatigued hover:bg-slate-800"
               >
                 Remove
               </button>
@@ -365,7 +464,7 @@ function ExerciseBlock({
       </div>
 
       {suggestion?.suggest && suggestion.reason && (
-        <div className="mt-3 rounded-xl border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
+        <div className="mt-3  border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
           💡 {suggestion.reason}
         </div>
       )}
@@ -387,7 +486,7 @@ function ExerciseBlock({
 
       <button
         onClick={addSet}
-        className="mt-2 w-full rounded-lg border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
+        className="mt-2 w-full  border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
       >
         + Add set
       </button>
@@ -485,12 +584,12 @@ function SetRow({
   }
 
   return (
-    <div className={`rounded-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
+    <div className={`-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
       {/* Line 1 — the core logging controls */}
       <div className="flex items-center gap-2">
         <button
           onClick={toggleWarmup}
-          className={`h-8 w-8 shrink-0 rounded-md text-xs font-bold ${
+          className={`h-8 w-8 shrink-0  text-xs font-bold ${
             set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
           }`}
           title="Toggle warm-up"
@@ -505,9 +604,9 @@ function SetRow({
 
         <button
           onClick={() => onComplete(!set.is_completed)}
-          className={`ml-auto h-9 w-9 shrink-0 rounded-lg text-lg font-bold ${
+          className={`ml-auto h-9 w-9 shrink-0  text-lg font-bold ${
             set.is_completed
-              ? 'bg-beat text-onaccent'
+              ? 'bg-beat text-on-accent'
               : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
           }`}
           aria-label={set.is_completed ? 'Mark incomplete' : 'Complete set'}
@@ -525,7 +624,7 @@ function SetRow({
         )}
         <button
           onClick={remove}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+          className="flex items-center gap-1  px-2 py-1 text-xs text-slate-500 hover:bg-fatigued/10 hover:text-fatigued"
           aria-label="Delete set"
         >
           <svg
@@ -559,10 +658,10 @@ function NumberField({
   suffix?: string;
 }) {
   return (
-    <div className="flex items-center rounded-lg bg-slate-800">
+    <div className="flex items-center  bg-slate-800">
       <button
         onClick={() => onChange(value - step)}
-        className="h-9 w-7 rounded-l-lg text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7  text-slate-300 hover:bg-slate-700"
         aria-label="Decrease"
       >
         −
@@ -577,7 +676,7 @@ function NumberField({
       />
       <button
         onClick={() => onChange(value + step)}
-        className="h-9 w-7 rounded-r-lg text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7  text-slate-300 hover:bg-slate-700"
         aria-label="Increase"
       >
         +
@@ -619,7 +718,7 @@ function TimerButton({ onClick, children }: { onClick: () => void; children: str
   return (
     <button
       onClick={onClick}
-      className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+      className=" bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
     >
       {children}
     </button>

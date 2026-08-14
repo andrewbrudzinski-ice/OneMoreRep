@@ -86,8 +86,16 @@ export interface Repository {
   getWorkout(id: string): Promise<Workout | undefined>;
   getWorkoutDetail(id: string): Promise<WorkoutDetail | undefined>;
   updateWorkout(id: string, patch: WorkoutPatch): Promise<Workout>;
+  /** Move a workout to a different calendar date (edits completed_at/started_at,
+   * preserving each timestamp's time-of-day). Call `recomputePersonalRecords`
+   * afterwards if a completed workout's date changed, since PR chronology moves. */
+  updateWorkoutDate(id: string, date: DateString): Promise<Workout>;
   /** Close the session: stamp completed_at + duration_seconds. */
   completeWorkout(id: string): Promise<Workout>;
+  /** Rebuild the personal-records cache by replaying every completed workout in
+   * chronological order. Used after editing a past workout, where a lowered or
+   * added set can change what counted as a PR (and when). */
+  recomputePersonalRecords(): Promise<void>;
   /** Abandon and delete an in-progress session (and its children). */
   cancelWorkout(id: string): Promise<void>;
 

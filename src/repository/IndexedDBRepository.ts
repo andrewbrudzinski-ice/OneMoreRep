@@ -468,6 +468,21 @@ export class IndexedDBRepository implements Repository {
     return next;
   }
 
+  async updateWorkoutDate(id: string, date: DateString): Promise<Workout> {
+    const current = await this.db.workouts.get(id);
+    if (!current) throw new Error(`Workout ${id} not found`);
+    // Keep each timestamp's time-of-day; only move the calendar date, which is
+    // what day-bucketing (streaks, weekly volume, PR chronology) reads.
+    const next: Workout = {
+      ...current,
+      started_at: `${date}${current.started_at.slice(10)}`,
+      completed_at: current.completed_at ? `${date}${current.completed_at.slice(10)}` : null,
+      updated_at: nowISO(),
+    };
+    await this.db.workouts.put(next);
+    return next;
+  }
+
   async completeWorkout(id: string): Promise<Workout> {
     const current = await this.db.workouts.get(id);
     if (!current) throw new Error(`Workout ${id} not found`);
@@ -542,6 +557,19 @@ export class IndexedDBRepository implements Repository {
 
     if (newRecords.length > 0) {
       await this.db.personal_records.bulkAdd(newRecords);
+    }
+  }
+
+  async recomputePersonalRecords(): Promise<void> {
+    // PRs are historical ("best at the time achieved"), so editing one past
+    // session can change what counted as a record and when. Rebuild the whole
+    // cache by wiping it and replaying every completed workout in order.
+    const completed = (await this.db.workouts.toArray())
+      .filter((w): w is Workout & { completed_at: string } => w.completed_at !== null)
+      .sort((a, b) => a.completed_at.localeCompare(b.completed_at));
+    await this.db.personal_records.clear();
+    for (const w of completed) {
+      await this.detectAndSaveWorkoutPRs(w.id, w.completed_at);
     }
   }
 

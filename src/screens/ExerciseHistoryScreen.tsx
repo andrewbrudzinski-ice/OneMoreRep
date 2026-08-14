@@ -89,14 +89,14 @@ export function ExerciseHistoryScreen() {
             <Best label="Lifetime vol." value={`${formatNumber(history.lifetimeVolume)} ${unit}`} />
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className=" border border-slate-800 bg-slate-900/50 p-4">
             <div className="mb-3 flex gap-2">
               {METRICS.map((m) => (
                 <button
                   key={m.key}
                   onClick={() => setMetric(m.key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                    metric === m.key ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
+                  className={`-lg px-3 py-1.5 text-xs font-medium ${
+                    metric === m.key ? 'bg-beat text-on-accent' : 'bg-slate-800 text-slate-300'
                   }`}
                 >
                   {m.label}
@@ -112,7 +112,7 @@ export function ExerciseHistoryScreen() {
               {history.sessions.map((session) => (
                 <li
                   key={session.workout.id}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+                  className=" border border-slate-800 bg-slate-900/50 p-4"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
@@ -128,7 +128,7 @@ export function ExerciseHistoryScreen() {
                       .map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-md bg-slate-800 px-2 py-1 text-xs tabular-nums text-slate-200"
+                          className=" bg-slate-800 px-2 py-1 text-xs tabular-nums text-slate-200"
                         >
                           {s.weight}×{s.reps}
                         </span>
@@ -146,7 +146,7 @@ export function ExerciseHistoryScreen() {
 
 function Best({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+    <div className=" border border-slate-800 bg-slate-900/50 p-3">
       <div className="text-sm font-bold tabular-nums">{value}</div>
       <div className="mt-0.5 text-[11px] text-slate-400">{label}</div>
     </div>

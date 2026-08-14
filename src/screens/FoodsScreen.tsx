@@ -84,7 +84,7 @@ export function FoodsScreen() {
               </button>
               <button
                 onClick={() => remove(food)}
-                className="h-8 w-8 shrink-0 text-slate-600 hover:text-red-400"
+                className="h-8 w-8 shrink-0 text-slate-600 hover:text-fatigued"
                 aria-label="Delete food"
               >
                 ✕

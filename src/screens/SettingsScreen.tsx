@@ -4,12 +4,10 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { Button, ErrorState, SelectField, Spinner, TextField } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
-import { applyTheme } from '../lib/theme';
 import { titleCase } from '../lib/labels';
-import type { Goal, Sex, Theme, Units } from '../types';
+import type { Goal, Sex, Units } from '../types';
 
 const GOALS: Goal[] = ['cut', 'maintain', 'bulk', 'recomp', 'general'];
-const THEMES: Theme[] = ['dark', 'light', 'system'];
 const SEXES: Sex[] = ['male', 'female', 'other', 'unspecified'];
 
 export function SettingsScreen() {
@@ -67,7 +65,6 @@ function SettingsForm({
   const repository = useRepository();
   const [name, setName] = useState(initialName);
   const [units, setUnits] = useState<Units>(initialSettings.units);
-  const [theme, setTheme] = useState<Theme>(initialSettings.theme);
   const [goal, setGoal] = useState<Goal>(initialSettings.goal);
   const [sex, setSex] = useState<Sex>(initialSettings.sex);
   const [rest, setRest] = useState(String(initialSettings.default_rest_seconds));
@@ -87,7 +84,7 @@ function SettingsForm({
       await repository.updateUser({ name: name.trim() || 'Me' });
       await repository.updateSettings({
         units,
-        theme,
+        theme: 'dark',
         goal,
         sex,
         default_rest_seconds: numOr(rest, 120),
@@ -100,7 +97,6 @@ function SettingsForm({
         height: numOrNull(height),
         age: numOrNull(age),
       });
-      applyTheme(theme);
       onSaved();
     } finally {
       setSaving(false);
@@ -138,16 +134,6 @@ function SettingsForm({
             ))}
           </SelectField>
         </div>
-        <SelectField label="Theme" value={theme} onChange={(v) => setTheme(v as Theme)}>
-          {THEMES.map((t) => (
-            <option key={t} value={t}>
-              {titleCase(t)}
-            </option>
-          ))}
-        </SelectField>
-        <p className="text-xs text-slate-500">
-          “System” follows your device; Light and Dark are both fully supported.
-        </p>
       </Section>
 
       <Section title="Daily macro targets">
@@ -167,7 +153,7 @@ function SettingsForm({
           value={rest}
           onChange={(e) => setRest(e.target.value)}
         />
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+        <label className="flex items-center justify-between gap-3  border border-slate-800 bg-slate-900/50 p-3">
           <span className="text-sm">
             <span className="font-medium">Load always green</span>
             <span className="mt-0.5 block text-xs text-slate-500">

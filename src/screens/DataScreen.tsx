@@ -81,7 +81,7 @@ export function DataScreen() {
       />
 
       <div className="space-y-4 p-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <div className=" border border-slate-800 bg-slate-900/50 p-4">
           <h2 className="font-semibold">Export</h2>
           <p className="mt-1 text-sm text-slate-400">
             Download your entire database as a JSON file. This is your only backup on a local-first
@@ -92,7 +92,7 @@ export function DataScreen() {
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <div className=" border border-slate-800 bg-slate-900/50 p-4">
           <h2 className="font-semibold">Import</h2>
           <p className="mt-1 text-sm text-slate-400">
             Restore from a backup file. This <span className="font-semibold text-slate-200">replaces
@@ -116,12 +116,12 @@ export function DataScreen() {
         </div>
 
         {message && (
-          <p className="rounded-xl border border-beat/30 bg-beat/5 px-4 py-3 text-sm text-beat">
+          <p className=" border border-beat/30 bg-beat/5 px-4 py-3 text-sm text-beat">
             {message}
           </p>
         )}
         {error && (
-          <p className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+          <p className=" border border-fatigued/30 bg-fatigued/5 px-4 py-3 text-sm text-fatigued">
             {error}
           </p>
         )}
