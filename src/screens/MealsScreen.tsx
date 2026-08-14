@@ -69,7 +69,7 @@ export function MealsScreen() {
       ) : (
         <ul className="space-y-3 p-4">
           {state.data?.map(({ meal, detail }) => (
-            <li key={meal.id} className="-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <li key={meal.id} className=" border border-slate-800 bg-slate-900/50 p-4">
               <button className="w-full text-left" onClick={() => setEditingMealId(meal.id)}>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{meal.name}</span>
@@ -159,7 +159,7 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
             detail.items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-2 -xl border border-slate-800 bg-slate-900/50 p-3"
+                className="flex items-center gap-2  border border-slate-800 bg-slate-900/50 p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm">{item.food?.name ?? 'Deleted food'}</div>
@@ -171,7 +171,7 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
                 </div>
                 <button
                   onClick={() => changeServings(item.id, Math.round((item.servings - 0.5) * 100) / 100)}
-                  className="h-7 w-7 -md bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="h-7 w-7  bg-slate-800 text-slate-300 hover:bg-slate-700"
                   aria-label="Fewer servings"
                 >
                   −
@@ -179,7 +179,7 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
                 <span className="w-8 text-center text-xs tabular-nums">{item.servings}</span>
                 <button
                   onClick={() => changeServings(item.id, Math.round((item.servings + 0.5) * 100) / 100)}
-                  className="h-7 w-7 -md bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="h-7 w-7  bg-slate-800 text-slate-300 hover:bg-slate-700"
                   aria-label="More servings"
                 >
                   +

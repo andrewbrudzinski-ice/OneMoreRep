@@ -34,7 +34,7 @@ export function TrendChart({
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center -xl border border-slate-800 text-sm text-slate-500"
+        className="flex items-center justify-center  border border-slate-800 text-sm text-slate-500"
         style={{ height }}
       >
         Not enough data yet

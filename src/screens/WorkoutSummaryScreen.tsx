@@ -59,7 +59,7 @@ export function WorkoutSummaryScreen() {
         <Stat label="Volume" value={`${formatNumber(summary.totalVolume)} ${unit}`} />
       </div>
 
-      <div className="mt-4 -2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
+      <div className="mt-4  border border-slate-800 bg-slate-900/50 p-5 text-center">
         <div className="text-xs uppercase tracking-wide text-slate-500">vs last time</div>
         <div className={`mt-1 text-lg font-semibold ${TONE_CLASSES[summary.vsLast.tone]}`}>
           {summary.vsLast.label}
@@ -71,7 +71,7 @@ export function WorkoutSummaryScreen() {
           New personal records {summary.newPRs.length > 0 && `(${summary.newPRs.length})`}
         </h2>
         {summary.newPRs.length === 0 ? (
-          <p className="-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400">
+          <p className=" border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400">
             No new PRs this session — consistency still counts.
           </p>
         ) : (
@@ -79,7 +79,7 @@ export function WorkoutSummaryScreen() {
             {summary.newPRs.map((pr) => (
               <li
                 key={pr.id}
-                className="flex items-center justify-between -xl border border-beat/30 bg-beat/5 px-4 py-3"
+                className="flex items-center justify-between  border border-beat/30 bg-beat/5 px-4 py-3"
               >
                 <div>
                   <div className="text-sm font-medium">{PR_TYPE_LABELS[pr.pr_type]}</div>
@@ -124,7 +124,7 @@ function formatPrValue(type: string, value: number, unit: Settings['units']): st
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="-2xl border border-slate-800 bg-slate-900/50 p-4 text-center">
+    <div className=" border border-slate-800 bg-slate-900/50 p-4 text-center">
       <div className="text-lg font-bold tabular-nums">{value}</div>
       <div className="mt-0.5 text-xs text-slate-400">{label}</div>
     </div>

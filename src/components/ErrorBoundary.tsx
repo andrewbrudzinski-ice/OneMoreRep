@@ -43,13 +43,13 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="mt-2 flex gap-2">
             <button
               onClick={this.handleReload}
-              className="-xl bg-beat px-4 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
+              className=" bg-beat px-4 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-hover"
             >
               Reload
             </button>
             <button
               onClick={this.handleHome}
-              className="-xl bg-slate-800 px-4 py-2.5 text-sm text-slate-100 hover:bg-slate-700"
+              className=" bg-slate-800 px-4 py-2.5 text-sm text-slate-100 hover:bg-slate-700"
             >
               Go home
             </button>
