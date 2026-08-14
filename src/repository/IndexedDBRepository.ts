@@ -55,6 +55,7 @@ import type {
   WorkoutExerciseWithSets,
   WorkoutPatch,
   WorkoutSummaryData,
+  WorkoutHistoryEntry,
 } from './Repository';
 import { bestE1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
@@ -839,6 +840,30 @@ export class IndexedDBRepository implements Repository {
       vsLast,
       newPRs,
     };
+  }
+
+  async getWorkoutHistory(): Promise<WorkoutHistoryEntry[]> {
+    const completed = (await this.db.workouts.toArray())
+      .filter((w) => w.completed_at !== null)
+      .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''));
+
+    const entries: WorkoutHistoryEntry[] = [];
+    for (const workout of completed) {
+      const wex = await this.db.workout_exercises.where('workout_id').equals(workout.id).toArray();
+      let workingSetCount = 0;
+      let volume = 0;
+      for (const row of wex) {
+        const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+        for (const s of sets) {
+          if (!s.is_warmup && s.is_completed) {
+            workingSetCount += 1;
+            volume += s.weight * s.reps;
+          }
+        }
+      }
+      entries.push({ workout, exerciseCount: wex.length, workingSetCount, volume });
+    }
+    return entries;
   }
 
   /** Total completed working-set volume for a workout. */

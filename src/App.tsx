@@ -15,6 +15,7 @@ import { FoodsScreen } from './screens/FoodsScreen';
 import { MealsScreen } from './screens/MealsScreen';
 import { MoreScreen } from './screens/MoreScreen';
 import { ExercisesScreen } from './screens/ExercisesScreen';
+import { WorkoutHistoryScreen } from './screens/WorkoutHistoryScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DataScreen } from './screens/DataScreen';
 
@@ -57,6 +58,7 @@ const router = createBrowserRouter([
         ),
       },
       { path: 'more', element: <MoreScreen /> },
+      { path: 'more/history', element: <WorkoutHistoryScreen /> },
       { path: 'more/exercises', element: <ExercisesScreen /> },
       { path: 'more/settings', element: <SettingsScreen /> },
       { path: 'more/data', element: <DataScreen /> },
