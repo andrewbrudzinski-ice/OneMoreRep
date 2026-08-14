@@ -1,21 +1,34 @@
 import type { ReactNode } from 'react';
 
-/** Shared page header with a title and optional subtitle / action slot. */
+/**
+ * Shared page header — flat on the page ground with a 2px rule below, an
+ * optional accent kicker above the title, and an optional subtitle / action.
+ */
 export function ScreenHeader({
   title,
   subtitle,
+  kicker,
   action,
 }: {
   title: string;
   subtitle?: string;
+  /** Small uppercase accent line above the title. */
+  kicker?: string;
   action?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 px-4 py-4 backdrop-blur">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-          {subtitle && <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>}
+    <header className="border-b-2 border-white/[0.15] px-5 pb-[18px] pt-[26px]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {kicker && (
+            <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-accent">
+              {kicker}
+            </div>
+          )}
+          <h1 className="text-[29px] font-extrabold leading-none tracking-[-0.03em] text-ink">
+            {title}
+          </h1>
+          {subtitle && <p className="mt-2 text-sm text-ink2">{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -26,9 +39,8 @@ export function ScreenHeader({
 /** Placeholder body used by the not-yet-built screens (empty state). */
 export function ComingSoon({ note }: { note: string }) {
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 px-6 text-center">
-      <div className="text-4xl">🚧</div>
-      <p className="max-w-xs text-sm text-slate-400">{note}</p>
+    <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center">
+      <p className="max-w-xs text-sm text-ink2">{note}</p>
     </div>
   );
 }

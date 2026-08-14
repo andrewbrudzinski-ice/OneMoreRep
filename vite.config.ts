@@ -19,8 +19,8 @@ export default defineConfig({
         name: 'OneMoreRep',
         short_name: 'OneMoreRep',
         description: 'Local-first fitness tracker. Beat last time.',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#0D1014',
+        background_color: '#0D1014',
         display: 'standalone',
         orientation: 'portrait',
         // start_url / scope are derived from `base` by the plugin.
