@@ -25,6 +25,12 @@ export interface ReadinessResult {
   reasons: string[];
   suggestion: string;
   score: number;
+  /**
+   * The raw signals the engine read, echoed back so the UI can surface them
+   * (e.g. the Home readiness "signals" grid) and keep the level auditable.
+   * Presentational only — no new metric is invented here.
+   */
+  input: ReadinessInput;
 }
 
 function formatList(items: string[]): string {
@@ -88,5 +94,5 @@ export function computeReadiness(input: ReadinessInput): ReadinessResult {
         ? 'A normal or a lighter day both work.'
         : 'Consider a lighter day or a rest day.';
 
-  return { level, reasons, suggestion, score };
+  return { level, reasons, suggestion, score, input };
 }

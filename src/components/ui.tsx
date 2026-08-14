@@ -3,10 +3,10 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTML
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-beat text-onaccent hover:bg-green-400 font-semibold',
+  primary: 'bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-press font-extrabold',
   secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
   ghost: 'bg-transparent text-slate-300 hover:bg-slate-800',
-  danger: 'bg-transparent text-red-400 hover:bg-red-500/10',
+  danger: 'bg-transparent text-fatigued hover:bg-fatigued/10',
 };
 
 export function Button({
@@ -17,7 +17,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm transition-colors disabled:opacity-40 ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm transition-colors disabled:opacity-40 ${variantClasses[variant]} ${className}`}
       {...rest}
     >
       {children}
@@ -34,7 +34,7 @@ export function TextField({
     <label className="block">
       {label && <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>}
       <input
-        className={`w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-beat ${className}`}
+        className={`w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent ${className}`}
         {...rest}
       />
     </label>
@@ -50,7 +50,7 @@ export function TextAreaField({
     <label className="block">
       {label && <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>}
       <textarea
-        className={`w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-beat ${className}`}
+        className={`w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent ${className}`}
         rows={3}
         {...rest}
       />
@@ -77,7 +77,7 @@ export function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-beat ${className}`}
+        className={`w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent ${className}`}
       >
         {children}
       </select>
@@ -97,9 +97,9 @@ export function Chip({
   return (
     <button
       onClick={onClick}
-      className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+      className={`whitespace-nowrap border px-3 py-1.5 text-xs font-semibold transition-colors ${
         active
-          ? 'border-beat bg-beat/15 text-beat'
+          ? 'border-accent bg-accent/15 text-accent'
           : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'
       }`}
     >
@@ -128,7 +128,7 @@ export function Stepper({
       <button
         type="button"
         onClick={() => onChange(clamp(value - 1))}
-        className="h-9 w-9 rounded-lg bg-slate-800 text-lg text-slate-200 hover:bg-slate-700"
+        className="h-9 w-9 bg-slate-800 text-lg text-slate-200 hover:bg-slate-700"
         aria-label="Decrease"
       >
         −
@@ -137,7 +137,7 @@ export function Stepper({
       <button
         type="button"
         onClick={() => onChange(clamp(value + 1))}
-        className="h-9 w-9 rounded-lg bg-slate-800 text-lg text-slate-200 hover:bg-slate-700"
+        className="h-9 w-9 bg-slate-800 text-lg text-slate-200 hover:bg-slate-700"
         aria-label="Increase"
       >
         +
@@ -159,12 +159,12 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-800 bg-slate-950 sm:rounded-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-lg flex-col border border-slate-800 bg-slate-950">
         <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="text-base font-extrabold">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
             aria-label="Close"
           >
             ✕
@@ -185,11 +185,10 @@ export function Spinner() {
   );
 }
 
-export function EmptyState({ icon, title, note }: { icon: string; title: string; note?: string }) {
+export function EmptyState({ title, note }: { icon?: string; title: string; note?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-      <div className="text-4xl">{icon}</div>
-      <p className="font-medium text-slate-200">{title}</p>
+      <p className="font-extrabold text-slate-200">{title}</p>
       {note && <p className="max-w-xs text-sm text-slate-400">{note}</p>}
     </div>
   );
@@ -198,8 +197,7 @@ export function EmptyState({ icon, title, note }: { icon: string; title: string;
 export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-      <div className="text-4xl">⚠️</div>
-      <p className="font-medium text-red-400">Something went wrong</p>
+      <p className="font-extrabold text-fatigued">Something went wrong</p>
       <p className="max-w-xs text-sm text-slate-400">{error.message}</p>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry}>

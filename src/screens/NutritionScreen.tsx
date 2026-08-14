@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
-import { MacroRings } from '../components/MacroRings';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
+import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { todayDateString } from '../lib/id';
 import { entryTotals } from '../lib/nutrition';
 import { formatNumber } from '../lib/format';
-import type { Food, Meal, MealType } from '../types';
-import type { FoodEntryWithFood } from '../repository/Repository';
+import type { Food, Meal, MealType, Settings } from '../types';
+import type { FoodEntryWithFood, NutritionDay } from '../repository/Repository';
 
 const MEALS: { type: MealType; label: string }[] = [
   { type: 'breakfast', label: 'Breakfast' },
@@ -35,6 +35,7 @@ export function NutritionScreen() {
   const navigate = useNavigate();
   const [date, setDate] = useState(() => todayDateString());
   const [addTo, setAddTo] = useState<MealType | null>(null);
+  const [editing, setEditing] = useState<FoodEntryWithFood | null>(null);
 
   const state = useAsync(async () => {
     const [day, settings] = await Promise.all([
@@ -43,6 +44,8 @@ export function NutritionScreen() {
     ]);
     return { day, settings };
   }, [date]);
+
+  const p = useAnimationProgress(state.data);
 
   async function addFood(food: Food, mealType: MealType) {
     await repository.addFoodEntry(date, { food_id: food.id, meal_type: mealType, servings: 1 });
@@ -72,29 +75,21 @@ export function NutritionScreen() {
 
   const day = state.data?.day;
   const settings = state.data?.settings;
+  const atToday = date >= todayDateString();
 
   return (
     <>
       <ScreenHeader
+        kicker={prettyDate(date)}
         title="Nutrition"
-        subtitle={prettyDate(date)}
         action={
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setDate((d) => shiftDate(d, -1))}
-              className="h-8 w-8 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
-              aria-label="Previous day"
-            >
+          <div className="flex gap-0.5">
+            <StepButton label="Previous day" onClick={() => setDate((d) => shiftDate(d, -1))}>
               ‹
-            </button>
-            <button
-              onClick={() => setDate((d) => shiftDate(d, 1))}
-              disabled={date >= todayDateString()}
-              className="h-8 w-8 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-              aria-label="Next day"
-            >
+            </StepButton>
+            <StepButton label="Next day" onClick={() => setDate((d) => shiftDate(d, 1))} disabled={atToday}>
               ›
-            </button>
+            </StepButton>
           </div>
         }
       />
@@ -104,16 +99,23 @@ export function NutritionScreen() {
       ) : !day || !settings ? (
         <Spinner />
       ) : (
-        <div className="space-y-4 p-4">
-          <MacroRings totals={day.totals} settings={settings} />
+        <>
+          <CaloriesBlock totals={day.totals} settings={settings} p={p} />
 
-          <div className="flex gap-2">
-            <Button variant="secondary" className="flex-1" onClick={() => navigate('/nutrition/foods')}>
+          {/* Foods / Meals */}
+          <div className="grid grid-cols-2 gap-0.5 border-b-2 border-white/[0.15] bg-white/[0.15]">
+            <button
+              onClick={() => navigate('/nutrition/foods')}
+              className="bg-ground px-5 py-[15px] text-left text-[11px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:bg-surface"
+            >
               Foods
-            </Button>
-            <Button variant="secondary" className="flex-1" onClick={() => navigate('/nutrition/meals')}>
+            </button>
+            <button
+              onClick={() => navigate('/nutrition/meals')}
+              className="bg-ground px-5 py-[15px] text-left text-[11px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:bg-surface"
+            >
               Meals
-            </Button>
+            </button>
           </div>
 
           {MEALS.map(({ type, label }) => (
@@ -122,11 +124,10 @@ export function NutritionScreen() {
               label={label}
               entries={day.byMeal[type]}
               onAdd={() => setAddTo(type)}
-              onServings={changeServings}
-              onRemove={removeEntry}
+              onEdit={setEditing}
             />
           ))}
-        </div>
+        </>
       )}
 
       {addTo && (
@@ -137,7 +138,130 @@ export function NutritionScreen() {
           onAddMeal={(meal) => addMeal(meal, addTo)}
         />
       )}
+
+      {editing && (
+        <ServingsEditor
+          entry={editing}
+          onClose={() => setEditing(null)}
+          onChange={(servings) => {
+            void changeServings(editing, servings);
+          }}
+          onRemove={() => {
+            void removeEntry(editing);
+            setEditing(null);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function StepButton({
+  children,
+  onClick,
+  disabled,
+  label,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="flex h-[34px] w-[34px] items-center justify-center border border-white/[0.18] text-lg text-ink transition-colors hover:bg-surface disabled:cursor-default disabled:border-white/[0.08] disabled:text-ink5 disabled:hover:bg-transparent"
+    >
+      {children}
+    </button>
+  );
+}
+
+function CaloriesBlock({
+  totals,
+  settings,
+  p,
+}: {
+  totals: NutritionDay['totals'];
+  settings: Settings;
+  p: number;
+}) {
+  const target = settings.calorie_target;
+  const calories = Math.round(totals.calories * p);
+  const ratio = target ? Math.min(1, totals.calories / target) : 0;
+  const remaining = target ? Math.max(0, Math.round(target - totals.calories)) : 0;
+  const met = target !== null && totals.calories >= target;
+
+  return (
+    <section className="border-b-2 border-white/[0.15] bg-surface px-5 py-5">
+      <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink3">Calories</div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-[52px] font-extrabold leading-[0.88] tracking-[-0.045em] tabular-nums text-ink">
+          {formatNumber(calories)}
+        </span>
+        {target !== null && (
+          <span className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-ink3">
+            / {formatNumber(target)}
+          </span>
+        )}
+      </div>
+
+      {target !== null && (
+        <>
+          <div className="mt-3 h-2 bg-ground">
+            <div className="h-full bg-accent" style={{ width: `${(ratio * p * 100).toFixed(1)}%` }} />
+          </div>
+          <div className="mt-1 text-[10.5px] text-ink4">
+            {met ? 'Target met' : `${formatNumber(remaining)} left`}
+          </div>
+        </>
+      )}
+
+      <div className="mt-3">
+        <MacroRow label="Protein" value={totals.protein} target={settings.protein_target} p={p} />
+        <MacroRow label="Carbs" value={totals.carbs} target={settings.carb_target} p={p} />
+        <MacroRow label="Fat" value={totals.fat} target={settings.fat_target} p={p} />
+        <MacroRow label="Fiber" value={totals.fiber} target={settings.fiber_target} p={p} fiber />
+      </div>
+    </section>
+  );
+}
+
+function MacroRow({
+  label,
+  value,
+  target,
+  p,
+  fiber,
+}: {
+  label: string;
+  value: number;
+  target: number | null;
+  p: number;
+  fiber?: boolean;
+}) {
+  const met = target !== null && value >= target;
+  const ratio = target ? Math.min(1, value / target) : 0;
+  return (
+    <div className="grid grid-cols-[64px_1fr_88px] items-center gap-3 border-t border-white/[0.08] py-[11px]">
+      <div
+        className={`text-[9.5px] font-extrabold uppercase tracking-[0.13em] ${fiber ? 'text-ink4' : 'text-ink2'}`}
+      >
+        {label}
+      </div>
+      <div className={`bg-ground ${fiber ? 'h-0.5' : 'h-1'}`}>
+        <div
+          className={`h-full ${fiber ? 'bg-ink5' : met ? 'bg-accent' : 'bg-accent-muted'}`}
+          style={{ width: `${(ratio * p * 100).toFixed(1)}%` }}
+        />
+      </div>
+      <div className={`text-right tabular-nums ${fiber ? 'text-[11.5px] text-ink3' : 'text-[13px]'}`}>
+        <span className={fiber ? '' : 'font-extrabold text-ink'}>{Math.round(value * p)}</span>
+        <span className={fiber ? '' : 'text-ink3'}>{target !== null ? ` / ${target}g` : 'g'}</span>
+      </div>
+    </div>
   );
 }
 
@@ -145,73 +269,135 @@ function MealSection({
   label,
   entries,
   onAdd,
-  onServings,
-  onRemove,
+  onEdit,
 }: {
   label: string;
   entries: FoodEntryWithFood[];
   onAdd: () => void;
-  onServings: (entry: FoodEntryWithFood, servings: number) => void;
-  onRemove: (entry: FoodEntryWithFood) => void;
+  onEdit: (entry: FoodEntryWithFood) => void;
 }) {
   const sectionCalories = entries.reduce((sum, e) => sum + entryTotals(e).calories, 0);
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{label}</h2>
-        <span className="text-xs text-slate-500">{formatNumber(Math.round(sectionCalories))} cal</span>
+    <section className="border-b border-white/[0.08]">
+      <div className="flex items-center justify-between px-5 pb-1 pt-[15px]">
+        <h2 className="text-[14px] font-extrabold text-ink">{label}</h2>
+        <span
+          className={`text-[11px] font-extrabold tabular-nums ${sectionCalories > 0 ? 'text-ink2' : 'text-ink4'}`}
+        >
+          {formatNumber(Math.round(sectionCalories))} cal
+        </span>
       </div>
+
       {entries.length === 0 ? (
-        <p className="py-1 text-xs text-slate-500">Nothing logged yet.</p>
+        <p className="px-5 py-1.5 text-[11.5px] text-ink4">Nothing logged yet.</p>
       ) : (
-        <ul className="space-y-1.5">
+        <ul>
           {entries.map((entry) => {
             const totals = entryTotals(entry);
             return (
-              <li key={entry.id} className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{entry.name_snapshot}</div>
-                  <div className="text-xs text-slate-500 tabular-nums">
-                    {formatNumber(Math.round(totals.calories))} cal · {Math.round(totals.protein)}p{' '}
-                    {Math.round(totals.carbs)}c {Math.round(totals.fat)}f
+              <li key={entry.id}>
+                <button
+                  onClick={() => onEdit(entry)}
+                  className="flex w-full items-center gap-2 border-t border-white/[0.05] px-5 py-[9px] text-left transition-colors hover:bg-surface"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] text-ink">{entry.name_snapshot}</div>
+                    <div className="text-[10.5px] tabular-nums text-ink3">
+                      {formatNumber(Math.round(totals.calories))} cal · {Math.round(totals.protein)}p{' '}
+                      {Math.round(totals.carbs)}c {Math.round(totals.fat)}f
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => onServings(entry, Math.round((entry.servings - 0.5) * 100) / 100)}
-                    className="h-7 w-7 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700"
-                    aria-label="Fewer servings"
-                  >
-                    −
-                  </button>
-                  <span className="w-8 text-center text-xs tabular-nums">{entry.servings}</span>
-                  <button
-                    onClick={() => onServings(entry, Math.round((entry.servings + 0.5) * 100) / 100)}
-                    className="h-7 w-7 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700"
-                    aria-label="More servings"
-                  >
-                    +
-                  </button>
-                  <button
-                    onClick={() => onRemove(entry)}
-                    className="h-7 w-6 text-slate-600 hover:text-red-400"
-                    aria-label="Remove entry"
-                  >
-                    ✕
-                  </button>
-                </div>
+                  <span className="text-[11px] font-extrabold tabular-nums text-ink2">
+                    ×{entry.servings}
+                  </span>
+                  <ChevronRight className="h-[14px] w-[14px] shrink-0 text-ink4" />
+                </button>
               </li>
             );
           })}
         </ul>
       )}
+
       <button
         onClick={onAdd}
-        className="mt-2 w-full rounded-lg border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
+        className="px-5 py-[11px] text-[10px] font-extrabold uppercase tracking-[0.13em] text-accent hover:text-accent-hover"
       >
         + Add to {label.toLowerCase()}
       </button>
     </section>
+  );
+}
+
+function ServingsEditor({
+  entry,
+  onClose,
+  onChange,
+  onRemove,
+}: {
+  entry: FoodEntryWithFood;
+  onClose: () => void;
+  onChange: (servings: number) => void;
+  onRemove: () => void;
+}) {
+  const [servings, setServings] = useState(entry.servings);
+  const step = (delta: number) => {
+    const next = Math.max(0.5, Math.round((servings + delta) * 100) / 100);
+    setServings(next);
+    onChange(next);
+  };
+  return (
+    <Modal
+      title={entry.name_snapshot}
+      onClose={onClose}
+      footer={
+        <div className="flex items-center justify-between">
+          <Button variant="danger" onClick={onRemove}>
+            Remove
+          </Button>
+          <Button variant="primary" onClick={onClose}>
+            Done
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-ink2">Servings</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => step(-0.5)}
+            className="h-9 w-9 bg-slate-800 text-lg text-ink hover:bg-slate-700"
+            aria-label="Fewer servings"
+          >
+            −
+          </button>
+          <span className="w-10 text-center text-lg font-extrabold tabular-nums">{servings}</span>
+          <button
+            onClick={() => step(0.5)}
+            className="h-9 w-9 bg-slate-800 text-lg text-ink hover:bg-slate-700"
+            aria-label="More servings"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ChevronRight({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }
 
@@ -245,13 +431,13 @@ function AddEntrySheet({
   return (
     <Modal title={`Add to ${mealLabel}`} onClose={onClose}>
       <div className="space-y-3">
-        <div className="flex gap-2">
+        <div className="flex gap-0.5">
           {(['food', 'meal'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`flex-1 rounded-lg py-2 text-sm font-medium ${
-                tab === t ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
+              className={`flex-1 py-2 text-sm font-extrabold ${
+                tab === t ? 'bg-accent text-on-accent' : 'bg-slate-800 text-slate-300'
               }`}
             >
               {t === 'food' ? 'Foods' : 'Saved meals'}
@@ -271,7 +457,7 @@ function AddEntrySheet({
           foods.loading ? (
             <Spinner />
           ) : filteredFoods.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">
+            <p className="py-6 text-center text-sm text-ink3">
               No foods yet. Create some in the Foods library.
             </p>
           ) : (
@@ -283,7 +469,7 @@ function AddEntrySheet({
                     className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-slate-900"
                   >
                     <span className="text-sm">{food.name}</span>
-                    <span className="text-xs text-slate-500 tabular-nums">
+                    <span className="text-xs text-ink3 tabular-nums">
                       {formatNumber(food.calories)} cal
                     </span>
                   </button>
@@ -294,7 +480,7 @@ function AddEntrySheet({
         ) : meals.loading ? (
           <Spinner />
         ) : filteredMeals.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-500">
+          <p className="py-6 text-center text-sm text-ink3">
             No saved meals yet. Create some in the Meals library.
           </p>
         ) : (
