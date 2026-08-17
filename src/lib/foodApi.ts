@@ -10,11 +10,17 @@ import { mapOffProduct, mapUsdaFood, type FoodSearchResult } from './foodSearch'
  * - USDA FoodData Central: optional, enabled by a free VITE_USDA_API_KEY.
  */
 
-const USDA_KEY = import.meta.env.VITE_USDA_API_KEY;
+// USDA needs a key, but data.gov's shared DEMO_KEY works out of the box (low
+// rate limits: ~30/hour). Ship it as the default so whole-food search ("chicken
+// breast", "oats") works immediately; VITE_USDA_API_KEY overrides it with a
+// free personal key for higher limits.
+const USDA_KEY = import.meta.env.VITE_USDA_API_KEY || 'DEMO_KEY';
+const USING_REAL_USDA_KEY = !!import.meta.env.VITE_USDA_API_KEY;
 const OFF_FIELDS = 'code,product_name,brands,nutriments';
 
-export function usdaEnabled(): boolean {
-  return typeof USDA_KEY === 'string' && USDA_KEY.length > 0;
+/** True when a personal USDA key is configured (vs. the shared DEMO_KEY). */
+export function usdaKeyConfigured(): boolean {
+  return USING_REAL_USDA_KEY;
 }
 
 function keep(results: (FoodSearchResult | null)[]): FoodSearchResult[] {
@@ -22,10 +28,9 @@ function keep(results: (FoodSearchResult | null)[]): FoodSearchResult[] {
 }
 
 async function searchUsda(query: string, signal?: AbortSignal): Promise<FoodSearchResult[]> {
-  if (!usdaEnabled()) return [];
   const url =
     `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${USDA_KEY}` +
-    `&query=${encodeURIComponent(query)}&pageSize=20` +
+    `&query=${encodeURIComponent(query)}&pageSize=25` +
     `&dataType=${encodeURIComponent('Foundation,SR Legacy,Branded')}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`USDA ${res.status}`);
@@ -34,9 +39,11 @@ async function searchUsda(query: string, signal?: AbortSignal): Promise<FoodSear
 }
 
 async function searchOff(query: string, signal?: AbortSignal): Promise<FoodSearchResult[]> {
+  // sort_by=unique_scans_n surfaces widely-scanned products, which tend to have
+  // complete nutriments (so fewer get dropped for missing macros).
   const url =
     `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}` +
-    `&search_simple=1&action=process&json=1&page_size=20&fields=${OFF_FIELDS}`;
+    `&search_simple=1&action=process&json=1&page_size=25&sort_by=unique_scans_n&fields=${OFF_FIELDS}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`OFF ${res.status}`);
   const json = (await res.json()) as { products?: unknown[] };
@@ -57,9 +64,11 @@ export async function searchFoods(
   if (usda.status === 'rejected' && off.status === 'rejected') {
     throw new Error('Food search is unavailable — check your connection and try again.');
   }
+  // USDA first — it's authoritative for whole foods, which is what generic
+  // queries ("chicken", "rice") usually mean; Open Food Facts adds packaged items.
   const merged: FoodSearchResult[] = [];
-  if (off.status === 'fulfilled') merged.push(...off.value);
   if (usda.status === 'fulfilled') merged.push(...usda.value);
+  if (off.status === 'fulfilled') merged.push(...off.value);
   return merged;
 }
 
