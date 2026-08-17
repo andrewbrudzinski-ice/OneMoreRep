@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
@@ -8,6 +8,8 @@ import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { todayDateString } from '../lib/id';
 import { entryTotals } from '../lib/nutrition';
 import { formatNumber } from '../lib/format';
+import { searchFoods } from '../lib/foodApi';
+import type { FoodSearchResult } from '../lib/foodSearch';
 import type { Food, Meal, MealType, Settings } from '../types';
 import type { FoodEntryWithFood, NutritionDay } from '../repository/Repository';
 
@@ -55,6 +57,14 @@ export function NutritionScreen() {
 
   async function addMeal(meal: Meal, mealType: MealType) {
     await repository.addMealToDay(date, meal.id, mealType);
+    setAddTo(null);
+    state.reload();
+  }
+
+  // Import a food-database result into the local library, then log it.
+  async function addSearchResult(result: FoodSearchResult, mealType: MealType) {
+    const food = await repository.createFood(result.food);
+    await repository.addFoodEntry(date, { food_id: food.id, meal_type: mealType, servings: 1 });
     setAddTo(null);
     state.reload();
   }
@@ -136,6 +146,7 @@ export function NutritionScreen() {
           onClose={() => setAddTo(null)}
           onAddFood={(food) => addFood(food, addTo)}
           onAddMeal={(meal) => addMeal(meal, addTo)}
+          onAddSearchResult={(result) => addSearchResult(result, addTo)}
         />
       )}
 
@@ -401,19 +412,28 @@ function ChevronRight({ className }: { className?: string }) {
   );
 }
 
+const ADD_TABS = [
+  { key: 'search', label: 'Search' },
+  { key: 'food', label: 'Library' },
+  { key: 'meal', label: 'Meals' },
+] as const;
+type AddTab = (typeof ADD_TABS)[number]['key'];
+
 function AddEntrySheet({
   mealLabel,
   onClose,
   onAddFood,
   onAddMeal,
+  onAddSearchResult,
 }: {
   mealLabel: string;
   onClose: () => void;
   onAddFood: (food: Food) => void;
   onAddMeal: (meal: Meal) => void;
+  onAddSearchResult: (result: FoodSearchResult) => void;
 }) {
   const repository = useRepository();
-  const [tab, setTab] = useState<'food' | 'meal'>('food');
+  const [tab, setTab] = useState<AddTab>('search');
   const [query, setQuery] = useState('');
   const foods = useAsync(() => repository.getFoods(), []);
   const meals = useAsync(() => repository.getMeals(), []);
@@ -428,37 +448,80 @@ function AddEntrySheet({
     [meals.data, q],
   );
 
+  // Online database search (debounced, cancelable) for the Search tab.
+  const [results, setResults] = useState<FoodSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const trimmed = query.trim();
+
+  useEffect(() => {
+    if (tab !== 'search') return;
+    if (trimmed.length < 2) {
+      setResults([]);
+      setSearchError(null);
+      setSearching(false);
+      return;
+    }
+    const controller = new AbortController();
+    setSearching(true);
+    setSearchError(null);
+    const timer = setTimeout(() => {
+      searchFoods(trimmed, controller.signal)
+        .then((r) => {
+          setResults(r);
+          setSearching(false);
+        })
+        .catch((e: unknown) => {
+          if (controller.signal.aborted) return;
+          setSearchError(e instanceof Error ? e.message : 'Search failed');
+          setSearching(false);
+        });
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [tab, trimmed]);
+
   return (
     <Modal title={`Add to ${mealLabel}`} onClose={onClose}>
       <div className="space-y-3">
-        <div className="flex gap-0.5">
-          {(['food', 'meal'] as const).map((t) => (
+        <div className="grid grid-cols-3 gap-0.5">
+          {ADD_TABS.map((t) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2 text-sm font-extrabold ${
-                tab === t ? 'bg-accent text-on-accent' : 'bg-slate-800 text-slate-300'
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`py-2 text-sm font-extrabold ${
+                tab === t.key ? 'bg-accent text-on-accent' : 'bg-slate-800 text-slate-300'
               }`}
             >
-              {t === 'food' ? 'Foods' : 'Saved meals'}
+              {t.label}
             </button>
           ))}
         </div>
 
         <TextField
-          placeholder="Search…"
+          placeholder={tab === 'search' ? 'Search foods online…' : 'Search…'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
           aria-label="Search"
         />
 
-        {tab === 'food' ? (
+        {tab === 'search' ? (
+          <SearchResults
+            query={trimmed}
+            results={results}
+            loading={searching}
+            error={searchError}
+            onPick={onAddSearchResult}
+          />
+        ) : tab === 'food' ? (
           foods.loading ? (
             <Spinner />
           ) : filteredFoods.length === 0 ? (
             <p className="py-6 text-center text-sm text-ink3">
-              No foods yet. Create some in the Foods library.
+              No foods yet. Add one from Search, or create it in the Foods library.
             </p>
           ) : (
             <ul className="max-h-[45vh] divide-y divide-slate-800 overflow-y-auto">
@@ -499,5 +562,61 @@ function AddEntrySheet({
         )}
       </div>
     </Modal>
+  );
+}
+
+function SearchResults({
+  query,
+  results,
+  loading,
+  error,
+  onPick,
+}: {
+  query: string;
+  results: FoodSearchResult[];
+  loading: boolean;
+  error: string | null;
+  onPick: (result: FoodSearchResult) => void;
+}) {
+  if (query.length < 2) {
+    return (
+      <p className="py-6 text-center text-sm text-ink3">
+        Type at least 2 letters to search USDA & Open Food Facts. Picking a result fills in the
+        macros and saves it to your library.
+      </p>
+    );
+  }
+  if (loading) return <Spinner />;
+  if (error) return <p className="py-6 text-center text-sm text-fatigued">{error}</p>;
+  if (results.length === 0) {
+    return <p className="py-6 text-center text-sm text-ink3">No matches — try a simpler name.</p>;
+  }
+  return (
+    <ul className="max-h-[45vh] divide-y divide-slate-800 overflow-y-auto">
+      {results.map((r) => (
+        <li key={r.key}>
+          <button
+            onClick={() => onPick(r)}
+            className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-slate-900"
+          >
+            <div className="min-w-0">
+              <div className="truncate text-sm text-ink">{r.name}</div>
+              <div className="truncate text-[11px] text-ink3">
+                {r.brand ? `${r.brand} · ` : ''}
+                {r.source === 'usda' ? 'USDA' : 'Open Food Facts'} · per 100 g
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-xs font-extrabold tabular-nums text-ink2">
+                {formatNumber(r.food.calories)} cal
+              </div>
+              <div className="text-[10px] tabular-nums text-ink3">
+                {r.food.protein}p {r.food.carbs}c {r.food.fat}f
+              </div>
+            </div>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
