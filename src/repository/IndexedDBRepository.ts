@@ -56,6 +56,7 @@ import type {
   WorkoutPatch,
   WorkoutSummaryData,
   WorkoutHistoryEntry,
+  WeeklyStats,
 } from './Repository';
 import { bestE1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
@@ -63,7 +64,7 @@ import { summarizeVsLast } from '../lib/workoutSummary';
 import { sumEntries, type MacroTotals, ZERO_MACROS } from '../lib/nutrition';
 import { averageWithinDays } from '../lib/rollingAverage';
 import { countInLastDays, currentStreak, longestStreak } from '../lib/streak';
-import { addDays, dayDiff } from '../lib/dates';
+import { addDays, dayDiff, startOfWeek } from '../lib/dates';
 import { todayDateString } from '../lib/id';
 import { computeReadiness, type ReadinessResult } from '../lib/readiness';
 import { aggregateMuscleVolume, normalizeIntensities } from '../lib/muscleVolume';
@@ -864,6 +865,33 @@ export class IndexedDBRepository implements Repository {
       entries.push({ workout, exerciseCount: wex.length, workingSetCount, volume });
     }
     return entries;
+  }
+
+  async getWeeklyStats(): Promise<WeeklyStats> {
+    const today = todayDateString();
+    const weekStart = startOfWeek(today);
+    const completed = (await this.db.workouts.toArray()).filter((w) => w.completed_at !== null);
+    const workoutDays = completed
+      .map((w) => (w.completed_at ?? '').slice(0, 10))
+      .filter((d): d is string => !!d);
+
+    // This calendar week (Monday → today): distinct training days + volume.
+    const daysThisWeek = new Set<string>();
+    let weekVolume = 0;
+    for (const w of completed) {
+      const day = (w.completed_at ?? '').slice(0, 10);
+      if (!day || day < weekStart) continue; // ISO date strings compare correctly
+      daysThisWeek.add(day);
+      weekVolume += await this.computeWorkoutVolume(w.id);
+    }
+
+    return {
+      weekStart,
+      weekVolume,
+      daysTrained: daysThisWeek.size,
+      streak: currentStreak(workoutDays, today),
+      totalWorkouts: completed.length,
+    };
   }
 
   /** Total completed working-set volume for a workout. */

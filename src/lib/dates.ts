@@ -19,3 +19,13 @@ export function addDays(date: string, n: number): string {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * The Monday (ISO week start) on or before `date`, as "YYYY-MM-DD". Used to
+ * bucket weekly leaderboard stats so everyone shares the same Mon–Sun window.
+ */
+export function startOfWeek(date: string): string {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay(); // 0=Sun … 6=Sat
+  const sinceMonday = (dow + 6) % 7;
+  return addDays(date, -sinceMonday);
+}
