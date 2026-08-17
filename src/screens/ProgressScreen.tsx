@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { MuscleHeatmap } from '../components/MuscleHeatmap';
 import { EmptyState, ErrorState, Spinner } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -209,7 +210,17 @@ function MuscleVolume({
       <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink3">
         This week’s muscle volume
       </div>
-      <ul className="mt-3">
+
+      {/* Body map — dark → lime by how hard each group was worked. */}
+      <div className="mt-3">
+        <MuscleHeatmap
+          cells={cells}
+          selectedId={expanded}
+          onSelect={(cell) => onToggle(cell.muscleGroupId)}
+        />
+      </div>
+
+      <ul className="mt-4">
         {ranked.map((cell, i) => {
           const isOpen = expanded === cell.muscleGroupId;
           return (
