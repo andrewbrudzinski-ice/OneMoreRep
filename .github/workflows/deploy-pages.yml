@@ -43,6 +43,12 @@ jobs:
       # URLs and the router basename line up. Derived from GITHUB_REPOSITORY so
       # it's correct regardless of the triggering event.
       - name: Build (subpath base for Project Pages)
+        env:
+          # Personal USDA FoodData Central key (raises the food-search rate limit
+          # above the shared DEMO_KEY). A secret takes precedence if one is set.
+          # This is a client-side, public-by-design key — it's inlined into the
+          # bundle regardless — and is free/revocable at api.data.gov.
+          VITE_USDA_API_KEY: ${{ secrets.VITE_USDA_API_KEY || 'IHZqgRtK4gWxtsV0NPtW7xXgElcY3AHjcLLRVBCZ' }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
           echo "Building with base /$REPO_NAME/"
