@@ -14,9 +14,14 @@ permissions:
   pages: write
   id-token: write
 
+# Serialize Pages deploys. cancel-in-progress must be FALSE: a cancelled run
+# can leave its server-side Pages deployment mid-flight, which then makes the
+# next run fail with "deployment already in progress". Letting each deploy
+# finish (and queuing the next) is GitHub's recommended setting and avoids that
+# race — the cost is at most one superseded run waiting briefly.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
