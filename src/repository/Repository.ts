@@ -129,6 +129,8 @@ export interface Repository {
   /** Completed workouts, newest first, with lightweight per-session stats for
    * the workout-history list. */
   getWorkoutHistory(): Promise<WorkoutHistoryEntry[]>;
+  /** This week's local training stats (leaderboard foundation, no network). */
+  getWeeklyStats(): Promise<WeeklyStats>;
 
   // --- Nutrition: foods ----------------------------------------------------
   getFoods(): Promise<Food[]>;
@@ -304,6 +306,25 @@ export interface ExerciseHistory {
   bestSetVolume: number;
   bestWorkoutVolume: number;
   lifetimeVolume: number;
+}
+
+/**
+ * This week's training stats, computed entirely from local data. The
+ * backend-free foundation for the future friends leaderboard (see
+ * docs/leaderboard-plan.md) — the social layer will wrap these numbers with a
+ * display name / group before publishing; nothing here touches the network.
+ */
+export interface WeeklyStats {
+  /** Monday (ISO week start) of the current week, "YYYY-MM-DD". */
+  weekStart: DateString;
+  /** Working volume (Σ weight × reps of completed working sets) since Monday. */
+  weekVolume: number;
+  /** Distinct calendar days trained since Monday. */
+  daysTrained: number;
+  /** Current consecutive-day training streak (all-time). */
+  streak: number;
+  /** All-time completed workouts. */
+  totalWorkouts: number;
 }
 
 /** One completed session in the workout-history list. */
