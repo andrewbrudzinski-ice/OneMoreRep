@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
@@ -8,8 +8,10 @@ import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { todayDateString } from '../lib/id';
 import { entryTotals } from '../lib/nutrition';
 import { formatNumber } from '../lib/format';
-import { searchFoods } from '../lib/foodApi';
+import { searchFoods, lookupBarcode } from '../lib/foodApi';
 import type { FoodSearchResult } from '../lib/foodSearch';
+
+const BarcodeScanner = lazy(() => import('../components/BarcodeScanner'));
 import type { Food, Meal, MealType, Settings } from '../types';
 import type { FoodEntryWithFood, NutritionDay } from '../repository/Repository';
 
@@ -454,6 +456,29 @@ function AddEntrySheet({
   const [searchError, setSearchError] = useState<string | null>(null);
   const trimmed = query.trim();
 
+  // Barcode scanning.
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [looking, setLooking] = useState(false);
+
+  async function handleScanned(code: string) {
+    setScanning(false);
+    setLooking(true);
+    setScanError(null);
+    try {
+      const result = await lookupBarcode(code);
+      if (result) {
+        onAddSearchResult(result); // imports + logs + closes the sheet
+      } else {
+        setScanError(`No macros found for barcode ${code}. Try searching by name.`);
+      }
+    } catch {
+      setScanError('Barcode lookup failed — check your connection and try again.');
+    } finally {
+      setLooking(false);
+    }
+  }
+
   useEffect(() => {
     if (tab !== 'search') return;
     if (trimmed.length < 2) {
@@ -509,13 +534,30 @@ function AddEntrySheet({
         />
 
         {tab === 'search' ? (
-          <SearchResults
-            query={trimmed}
-            results={results}
-            loading={searching}
-            error={searchError}
-            onPick={onAddSearchResult}
-          />
+          <>
+            <button
+              onClick={() => {
+                setScanError(null);
+                setScanning(true);
+              }}
+              className="flex w-full items-center justify-center gap-2 border border-white/[0.18] py-2.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:border-white/[0.34] hover:bg-surface"
+            >
+              <BarcodeIcon className="h-4 w-4" />
+              Scan barcode
+            </button>
+            {scanError && <p className="text-center text-[12px] text-fatigued">{scanError}</p>}
+            {looking ? (
+              <Spinner />
+            ) : (
+              <SearchResults
+                query={trimmed}
+                results={results}
+                loading={searching}
+                error={searchError}
+                onPick={onAddSearchResult}
+              />
+            )}
+          </>
         ) : tab === 'food' ? (
           foods.loading ? (
             <Spinner />
@@ -561,7 +603,21 @@ function AddEntrySheet({
           </ul>
         )}
       </div>
+
+      {scanning && (
+        <Suspense fallback={null}>
+          <BarcodeScanner onDetected={handleScanned} onClose={() => setScanning(false)} />
+        </Suspense>
+      )}
     </Modal>
+  );
+}
+
+function BarcodeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className} aria-hidden="true">
+      <path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14" strokeLinecap="round" />
+    </svg>
   );
 }
 
