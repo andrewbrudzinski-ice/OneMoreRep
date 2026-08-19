@@ -1,52 +1,55 @@
 import type { ReactNode } from 'react';
-import Model, { type IExerciseData, type IMuscleStats, type Muscle } from 'react-body-highlighter';
 import type { MuscleHeatmapCell } from '../repository/Repository';
+import {
+  BODY_BACK,
+  BODY_FRONT,
+  OUTLINE_BACK,
+  OUTLINE_FRONT,
+  VIEWBOX_BACK,
+  VIEWBOX_FRONT,
+  type BodyPart,
+} from './bodyMuscleData';
 
 /**
  * Anatomical front/back muscle map shaded by this week's per-muscle working
- * volume — dark (untrained) → electric lime (worked hard) — so a glance answers
- * "am I neglecting X?". Uses react-body-highlighter's anatomical muscle
- * polygons; our muscle groups map onto its muscles, and tapping one selects the
- * group (syncs with the ranked list). Same props as before.
+ * volume — resting muscle → electric lime (worked hard) — so a glance answers
+ * "am I neglecting X?". Draws a detailed body outline + contoured muscle paths
+ * (see bodyMuscleData.ts); tapping a muscle selects that group (syncs with the
+ * ranked list). Same props as before.
  */
 
-// Our muscle-group id → the library's muscle regions.
-const GROUP_MUSCLES: Record<string, Muscle[]> = {
-  'mg-chest': ['chest'],
-  'mg-back': ['trapezius', 'upper-back', 'lower-back'],
-  'mg-shoulders': ['front-deltoids', 'back-deltoids'],
-  'mg-biceps': ['biceps'],
-  'mg-triceps': ['triceps'],
-  'mg-forearms': ['forearm'],
-  'mg-quads': ['quadriceps'],
-  'mg-hamstrings': ['hamstring'],
-  'mg-glutes': ['gluteal'],
-  'mg-calves': ['calves', 'left-soleus', 'right-soleus'],
-  'mg-abs': ['abs', 'obliques'],
+// The asset's muscle slug → our muscle-group id.
+const SLUG_GROUP: Record<string, string> = {
+  chest: 'mg-chest',
+  'upper-back': 'mg-back',
+  'lower-back': 'mg-back',
+  trapezius: 'mg-back',
+  deltoids: 'mg-shoulders',
+  biceps: 'mg-biceps',
+  triceps: 'mg-triceps',
+  forearm: 'mg-forearms',
+  quadriceps: 'mg-quads',
+  hamstring: 'mg-hamstrings',
+  gluteal: 'mg-glutes',
+  calves: 'mg-calves',
+  tibialis: 'mg-calves',
+  abs: 'mg-abs',
+  obliques: 'mg-abs',
 };
 
-const MUSCLE_GROUP: Partial<Record<Muscle, string>> = {};
-for (const [group, muscles] of Object.entries(GROUP_MUSCLES)) {
-  for (const m of muscles) MUSCLE_GROUP[m] = group;
-}
+const SKIN = new Set(['head', 'hair', 'hands', 'feet', 'ankles', 'knees', 'neck']);
 
-const BODY_COLOR = '#2A2F37'; // untrained / body base on the dark ground
-const SELECTED_COLOR = '#F2F4F3';
-const LEVELS = 5;
+const BODY_FILL = '#171C22'; // silhouette base / skin
+const MUSCLE_BASE = '#333B45'; // resting muscle tone
+const MUSCLE_BASE_RGB: [number, number, number] = [51, 59, 69];
+const LIME: [number, number, number] = [143, 232, 30];
+const EDGE = '#4A515C'; // body outline
+const SEP = '#10151A'; // separation between muscles
+const SELECTED = '#F2F4F3';
 
-function readChannels(name: string, fallback: [number, number, number]): [number, number, number] {
-  if (typeof window === 'undefined') return fallback;
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const parts = raw.split(/\s+/).map(Number);
-  return parts.length === 3 && parts.every((n) => !Number.isNaN(n))
-    ? (parts as [number, number, number])
-    : fallback;
-}
-
-function shade(t: number, from: [number, number, number]): string {
-  const to = [143, 232, 30]; // #8FE81E accent lime
+function shade(t: number): string {
   const k = Math.max(0, Math.min(1, t));
-  const c = from.map((f, i) => Math.round(f + (to[i]! - f) * k));
+  const c = MUSCLE_BASE_RGB.map((f, i) => Math.round(f + (LIME[i]! - f) * k));
   return `rgb(${c[0]} ${c[1]} ${c[2]})`;
 }
 
@@ -59,63 +62,70 @@ export function MuscleHeatmap({
   selectedId: string | null;
   onSelect: (cell: MuscleHeatmapCell) => void;
 }) {
-  const cold = readChannels('--s-800', [27, 32, 39]); // surface 2
-  // Intensity buckets 1..LEVELS, then a distinct colour for the selected group.
-  const highlightedColors = [
-    ...Array.from({ length: LEVELS }, (_, i) => shade((i + 1) / LEVELS, cold)),
-    SELECTED_COLOR,
-  ];
-
   const byId = new Map(cells.map((c) => [c.muscleGroupId, c]));
 
-  const data: IExerciseData[] = [];
-  for (const cell of cells) {
-    if (cell.volume <= 0) continue;
-    const muscles = GROUP_MUSCLES[cell.muscleGroupId];
-    if (!muscles) continue;
-    const level =
-      selectedId === cell.muscleGroupId
-        ? LEVELS + 1
-        : Math.max(1, Math.min(LEVELS, Math.ceil(cell.intensity * LEVELS)));
-    data.push({ name: cell.name, muscles, frequency: level });
-  }
-
-  const handleClick = ({ muscle }: IMuscleStats) => {
-    const group = MUSCLE_GROUP[muscle];
-    const cell = group ? byId.get(group) : undefined;
-    if (cell) onSelect(cell);
+  const fillFor = (slug: string): string => {
+    if (SKIN.has(slug)) return BODY_FILL;
+    const group = SLUG_GROUP[slug];
+    if (!group) return MUSCLE_BASE;
+    const cell = byId.get(group);
+    if (!cell || cell.volume <= 0) return MUSCLE_BASE;
+    if (selectedId === group) return SELECTED;
+    return shade(cell.intensity);
   };
 
+  const renderParts = (parts: BodyPart[]) =>
+    parts.map((part) => {
+      const group = SLUG_GROUP[part.slug];
+      const cell = group ? byId.get(group) : undefined;
+      const ds = [...(part.path.left ?? []), ...(part.path.right ?? []), ...(part.path.common ?? [])];
+      return (
+        <g
+          key={part.slug}
+          fill={fillFor(part.slug)}
+          stroke={SEP}
+          strokeWidth={0.8}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          style={{ cursor: cell ? 'pointer' : 'default' }}
+          onClick={() => cell && onSelect(cell)}
+        >
+          {cell && <title>{`${cell.name}: ${cell.volume}`}</title>}
+          {ds.map((d, i) => (
+            <path key={i} d={d} vectorEffect="non-scaling-stroke" />
+          ))}
+        </g>
+      );
+    });
+
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <Figure label="Front">
-        <Model
-          type="anterior"
-          data={data}
-          bodyColor={BODY_COLOR}
-          highlightedColors={highlightedColors}
-          onClick={handleClick}
-          style={{ height: '15rem' }}
-        />
+    <div className="grid grid-cols-2 gap-1">
+      <Figure label="Front" viewBox={VIEWBOX_FRONT}>
+        <path d={OUTLINE_FRONT} fill={BODY_FILL} stroke={EDGE} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        {renderParts(BODY_FRONT)}
       </Figure>
-      <Figure label="Back">
-        <Model
-          type="posterior"
-          data={data}
-          bodyColor={BODY_COLOR}
-          highlightedColors={highlightedColors}
-          onClick={handleClick}
-          style={{ height: '15rem' }}
-        />
+      <Figure label="Back" viewBox={VIEWBOX_BACK}>
+        <path d={OUTLINE_BACK} fill={BODY_FILL} stroke={EDGE} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        {renderParts(BODY_BACK)}
       </Figure>
     </div>
   );
 }
 
-function Figure({ label, children }: { label: string; children: ReactNode }) {
+function Figure({
+  label,
+  viewBox,
+  children,
+}: {
+  label: string;
+  viewBox: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex flex-col items-center gap-1">
-      {children}
+      <svg viewBox={viewBox} preserveAspectRatio="xMidYMid meet" className="h-72 w-full">
+        {children}
+      </svg>
       <span className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-ink3">
         {label}
       </span>
