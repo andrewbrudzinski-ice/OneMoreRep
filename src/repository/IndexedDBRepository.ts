@@ -35,6 +35,7 @@ import type {
   FoodEntryPatch,
   FoodEntryWithFood,
   LastSession,
+  RecentBest,
   MealDetail,
   MealItemWithFood,
   NewBodyWeightInput,
@@ -58,7 +59,7 @@ import type {
   WorkoutHistoryEntry,
   WeeklyStats,
 } from './Repository';
-import { bestE1RM, workingVolume } from '../lib/beatLastTime';
+import { bestE1RM, epley1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
 import { summarizeVsLast } from '../lib/workoutSummary';
 import { sumEntries, type MacroTotals, ZERO_MACROS } from '../lib/nutrition';
@@ -114,7 +115,13 @@ export class IndexedDBRepository implements Repository {
     if (!settings) {
       throw new Error('Settings not found — did seed() run?');
     }
-    return settings;
+    // Backfill fields added after this row may have been created, so existing
+    // installs get sane defaults without a schema migration.
+    return {
+      ...settings,
+      beat_comparison_enabled: settings.beat_comparison_enabled ?? true,
+      beat_lookback_weeks: settings.beat_lookback_weeks ?? 3,
+    };
   }
 
   async updateSettings(patch: Partial<Omit<Settings, keyof BaseFields>>): Promise<Settings> {
@@ -935,6 +942,43 @@ export class IndexedDBRepository implements Repository {
     }
     sets.sort((a, b) => a.set_number - b.set_number);
     return { workout: lastWorkout, sets };
+  }
+
+  async getRecentBest(
+    exerciseId: string,
+    options: { withinWeeks: number; excludeWorkoutId?: string },
+  ): Promise<RecentBest | undefined> {
+    const rows = await this.db.workout_exercises.where('exercise_id').equals(exerciseId).toArray();
+    if (rows.length === 0) return undefined;
+
+    const workoutIds = [...new Set(rows.map((r) => r.workout_id))];
+    const workouts = await this.db.workouts.bulkGet(workoutIds);
+    const cutoff = Date.now() - options.withinWeeks * 7 * 24 * 60 * 60 * 1000;
+    const eligible = new Map(
+      workouts
+        .filter((w): w is Workout => !!w && w.completed_at !== null)
+        .filter((w) => w.id !== options.excludeWorkoutId)
+        .filter((w) => new Date(w.completed_at ?? w.started_at).getTime() >= cutoff)
+        .map((w) => [w.id, w]),
+    );
+    if (eligible.size === 0) return undefined;
+
+    let best: RecentBest | undefined;
+    let bestE1rm = 0;
+    for (const row of rows) {
+      const workout = eligible.get(row.workout_id);
+      if (!workout) continue;
+      const rowSets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+      for (const s of rowSets) {
+        if (s.is_warmup || !s.is_completed) continue;
+        const e1rm = epley1RM(s.weight, s.reps);
+        if (e1rm > bestE1rm) {
+          bestE1rm = e1rm;
+          best = { weight: s.weight, reps: s.reps, date: workout.completed_at ?? workout.started_at };
+        }
+      }
+    }
+    return best;
   }
 
   // --- Nutrition: foods ------------------------------------------------------

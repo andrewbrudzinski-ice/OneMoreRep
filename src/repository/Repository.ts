@@ -119,6 +119,14 @@ export interface Repository {
     options?: { excludeWorkoutId?: string },
   ): Promise<LastSession | undefined>;
 
+  /** The single strongest working set (by Epley e1RM) for an exercise across
+   * all completed sessions within the last `withinWeeks` weeks — the baseline
+   * the Beat Last Time badge is compared against. */
+  getRecentBest(
+    exerciseId: string,
+    options: { withinWeeks: number; excludeWorkoutId?: string },
+  ): Promise<RecentBest | undefined>;
+
   // --- History, PRs & summary ----------------------------------------------
   /** Cached personal records, newest first. Optionally filtered by exercise. */
   getPersonalRecords(options?: { exerciseId?: string }): Promise<PersonalRecord[]>;
@@ -281,6 +289,14 @@ export interface WorkoutDetail {
 export interface LastSession {
   workout: Workout;
   sets: WorkoutSet[];
+}
+
+/** The strongest working set for an exercise within a recent-weeks window. */
+export interface RecentBest {
+  weight: number;
+  reps: number;
+  /** ISO timestamp of the session that set belongs to. */
+  date: string;
 }
 
 /** One completed session in an exercise's history. */

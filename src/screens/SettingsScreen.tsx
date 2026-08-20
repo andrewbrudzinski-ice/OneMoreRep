@@ -69,6 +69,8 @@ function SettingsForm({
   const [sex, setSex] = useState<Sex>(initialSettings.sex);
   const [rest, setRest] = useState(String(initialSettings.default_rest_seconds));
   const [loadAlwaysGreen, setLoadAlwaysGreen] = useState(initialSettings.load_always_green);
+  const [beatEnabled, setBeatEnabled] = useState(initialSettings.beat_comparison_enabled);
+  const [beatLookback, setBeatLookback] = useState(String(initialSettings.beat_lookback_weeks));
   const [calories, setCalories] = useState(str(initialSettings.calorie_target));
   const [protein, setProtein] = useState(str(initialSettings.protein_target));
   const [carbs, setCarbs] = useState(str(initialSettings.carb_target));
@@ -89,6 +91,8 @@ function SettingsForm({
         sex,
         default_rest_seconds: numOr(rest, 120),
         load_always_green: loadAlwaysGreen,
+        beat_comparison_enabled: beatEnabled,
+        beat_lookback_weeks: Math.min(52, Math.max(1, numOr(beatLookback, 3))),
         calorie_target: numOrNull(calories),
         protein_target: numOrNull(protein),
         carb_target: numOrNull(carbs),
@@ -167,6 +171,33 @@ function SettingsForm({
             className="h-5 w-5 accent-beat"
           />
         </label>
+
+        <label className="flex items-center justify-between gap-3  border border-slate-800 bg-slate-900/50 p-3">
+          <span className="text-sm">
+            <span className="font-medium">Beat Last Time badge</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Show Beat / Matched / Down while logging. Turn off to just log.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={beatEnabled}
+            onChange={(e) => setBeatEnabled(e.target.checked)}
+            className="h-5 w-5 accent-beat"
+          />
+        </label>
+
+        {beatEnabled && (
+          <TextField
+            label="Compare against your best of the last (weeks)"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={52}
+            value={beatLookback}
+            onChange={(e) => setBeatLookback(e.target.value)}
+          />
+        )}
       </Section>
 
       <div className="flex items-center gap-3">
