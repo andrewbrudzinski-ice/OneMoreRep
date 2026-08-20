@@ -89,6 +89,46 @@ describe('IndexedDBRepository — workouts', () => {
     expect(last?.sets.map((s) => s.weight)).toEqual([185]);
   });
 
+  it('getRecentBest returns the strongest working set within the week window', async () => {
+    const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+
+    // A big set 40 days ago — outside a 3-week window.
+    const old = await repo.startWorkout({ name: 'Old' });
+    const oldWex = await repo.addWorkoutExercise(old.id, 'ex-barbell-bench-press');
+    const oldSet = await repo.addSet(oldWex.id, { weight: 225, reps: 5 });
+    await repo.updateSet(oldSet.id, { is_completed: true });
+    await repo.completeWorkout(old.id);
+    await db.workouts.update(old.id, { completed_at: daysAgo(40) });
+
+    // Two sessions inside the window; best e1RM is 200×5 (not the heavier-looking
+    // 195×8 warm-up, which is excluded).
+    const w1 = await repo.startWorkout({ name: 'W1' });
+    const wex1 = await repo.addWorkoutExercise(w1.id, 'ex-barbell-bench-press');
+    const s1 = await repo.addSet(wex1.id, { weight: 185, reps: 8 });
+    await repo.updateSet(s1.id, { is_completed: true });
+    await repo.completeWorkout(w1.id);
+    await db.workouts.update(w1.id, { completed_at: daysAgo(10) });
+
+    const w2 = await repo.startWorkout({ name: 'W2' });
+    const wex2 = await repo.addWorkoutExercise(w2.id, 'ex-barbell-bench-press');
+    const warm = await repo.addSet(wex2.id, { weight: 300, reps: 1 });
+    await repo.updateSet(warm.id, { is_completed: true, is_warmup: true });
+    const top = await repo.addSet(wex2.id, { weight: 205, reps: 5 });
+    await repo.updateSet(top.id, { is_completed: true });
+    await repo.completeWorkout(w2.id);
+    await db.workouts.update(w2.id, { completed_at: daysAgo(3) });
+
+    const best = await repo.getRecentBest('ex-barbell-bench-press', { withinWeeks: 3 });
+    expect(best).toEqual({ weight: 205, reps: 5, date: expect.any(String) });
+
+    // A wider window pulls in the heavier 225×5.
+    const wide = await repo.getRecentBest('ex-barbell-bench-press', { withinWeeks: 8 });
+    expect(wide?.weight).toBe(225);
+
+    // No sessions at all → undefined.
+    expect(await repo.getRecentBest('ex-deadlift', { withinWeeks: 3 })).toBeUndefined();
+  });
+
   it('swap clears the sets from the previous exercise', async () => {
     const workout = await repo.startWorkout({ name: 'Empty' });
     const wex = await repo.addWorkoutExercise(workout.id, 'ex-barbell-bench-press');

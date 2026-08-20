@@ -8,12 +8,13 @@ import { useAsync } from '../hooks/useAsync';
 import { useElapsedSeconds, formatDuration } from '../hooks/useElapsedSeconds';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useRestTimer } from '../hooks/useRestTimer';
-import { evaluateSet, type BeatEvaluation } from '../lib/beatLastTime';
+import { evaluateSet, type BeatEvaluation, type ComparableSet } from '../lib/beatLastTime';
 import type { AutoRegResult } from '../lib/autoRegulation';
 import { filterExercises } from '../lib/exerciseSearch';
 import { titleCase } from '../lib/labels';
 import type {
   LastSession,
+  RecentBest,
   WorkoutDetail,
   WorkoutExerciseWithSets,
 } from '../repository/Repository';
@@ -30,6 +31,7 @@ interface LoadedData {
   detail: WorkoutDetail;
   settings: Settings;
   lastByExercise: Map<string, LastSession | undefined>;
+  recentBestByExercise: Map<string, RecentBest | undefined>;
   suggestionByExercise: Map<string, AutoRegResult>;
   restByExercise: Map<string, number | null>;
 }
@@ -52,11 +54,20 @@ export function WorkoutModeScreen() {
     ]);
     if (!detail) return null;
     const exIds = [...new Set(detail.exercises.map((e) => e.exercise_id))];
-    const [lastList, restList] = await Promise.all([
+    const [lastList, restList, recentBestList] = await Promise.all([
       Promise.all(exIds.map((id) => repository.getLastSession(id, { excludeWorkoutId: workoutId }))),
       Promise.all(exIds.map((id) => repository.getLastRestSeconds(id))),
+      Promise.all(
+        exIds.map((id) =>
+          repository.getRecentBest(id, {
+            withinWeeks: settings.beat_lookback_weeks,
+            excludeWorkoutId: workoutId,
+          }),
+        ),
+      ),
     ]);
     const lastByExercise = new Map(exIds.map((id, i) => [id, lastList[i]]));
+    const recentBestByExercise = new Map(exIds.map((id, i) => [id, recentBestList[i]]));
     // Auto-regulation suggestion, targeting the top rep count from last time.
     const suggestionList = await Promise.all(
       exIds.map((id) => {
@@ -69,6 +80,7 @@ export function WorkoutModeScreen() {
       detail,
       settings,
       lastByExercise,
+      recentBestByExercise,
       suggestionByExercise: new Map(exIds.map((id, i) => [id, suggestionList[i]!])),
       restByExercise: new Map(exIds.map((id, i) => [id, restList[i]!])),
     };
@@ -116,7 +128,8 @@ export function WorkoutModeScreen() {
     );
   }
 
-  const { detail, settings, lastByExercise, suggestionByExercise, restByExercise } = state.data;
+  const { detail, settings, lastByExercise, recentBestByExercise, suggestionByExercise, restByExercise } =
+    state.data;
   const { workout } = detail;
   // A completed workout opens in edit mode: no timer, no auto-seed, "Done"
   // recomputes PRs instead of "Finish" closing the session.
@@ -206,6 +219,7 @@ export function WorkoutModeScreen() {
               key={item.id}
               item={item}
               last={lastByExercise.get(item.exercise_id)}
+              recentBest={recentBestByExercise.get(item.exercise_id)}
               suggestion={suggestionByExercise.get(item.exercise_id)}
               rememberedRest={restByExercise.get(item.exercise_id) ?? null}
               settings={settings}
@@ -367,6 +381,7 @@ function IntentSelector({
 function ExerciseBlock({
   item,
   last,
+  recentBest,
   suggestion,
   rememberedRest,
   settings,
@@ -377,6 +392,7 @@ function ExerciseBlock({
 }: {
   item: WorkoutExerciseWithSets;
   last: LastSession | undefined;
+  recentBest: RecentBest | undefined;
   suggestion: AutoRegResult | undefined;
   rememberedRest: number | null;
   settings: Settings;
@@ -389,10 +405,12 @@ function ExerciseBlock({
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  const priorWorking = useMemo(
-    () => (last?.sets ?? []).filter((s) => !s.is_warmup),
-    [last],
-  );
+  // Beat Last Time compares each set to the single strongest set from the last
+  // few weeks (see settings.beat_lookback_weeks) — one stable baseline, so the
+  // verdict no longer flips as you scrub the weight.
+  const comparison: ComparableSet | null = recentBest
+    ? { weight: recentBest.weight, reps: recentBest.reps }
+    : null;
 
   const topWeight = useMemo(() => {
     const working = item.sets.filter((s) => !s.is_warmup);
@@ -429,6 +447,14 @@ function ExerciseBlock({
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
           <LastTimeRow last={last} />
+          {settings.beat_comparison_enabled && recentBest && (
+            <div className="mt-0.5 text-xs text-accent/80">
+              <span className="font-medium">BEST ({settings.beat_lookback_weeks} WK)</span>{' '}
+              <span className="tabular-nums">
+                {recentBest.weight}×{recentBest.reps}
+              </span>
+            </div>
+          )}
         </div>
         <div className="relative shrink-0">
           <button
@@ -475,7 +501,8 @@ function ExerciseBlock({
             key={set.id}
             set={set}
             unit={settings.units}
-            priorWorking={priorWorking}
+            comparison={comparison}
+            beatEnabled={settings.beat_comparison_enabled}
             loadAlwaysGreen={settings.load_always_green}
             intent={intent}
             onChanged={onChanged}
@@ -522,7 +549,8 @@ function LastTimeRow({ last }: { last: LastSession | undefined }) {
 function SetRow({
   set,
   unit,
-  priorWorking,
+  comparison,
+  beatEnabled,
   loadAlwaysGreen,
   intent,
   onChanged,
@@ -530,7 +558,8 @@ function SetRow({
 }: {
   set: WorkoutSet;
   unit: Settings['units'];
-  priorWorking: WorkoutSet[];
+  comparison: ComparableSet | null;
+  beatEnabled: boolean;
   loadAlwaysGreen: boolean;
   intent: WorkoutIntent;
   onChanged: () => void;
@@ -549,13 +578,9 @@ function SetRow({
   const weightStep = unit === 'kg' ? 2.5 : 5;
 
   const evaluation: BeatEvaluation | null = useMemo(() => {
-    if (set.is_warmup) return null;
-    return evaluateSet(
-      { weight, reps },
-      priorWorking.map((s) => ({ weight: s.weight, reps: s.reps })),
-      { loadAlwaysGreen, intent, unit },
-    );
-  }, [weight, reps, set.is_warmup, priorWorking, loadAlwaysGreen, intent, unit]);
+    if (set.is_warmup || !beatEnabled || !comparison) return null;
+    return evaluateSet({ weight, reps }, [comparison], { loadAlwaysGreen, intent, unit });
+  }, [weight, reps, set.is_warmup, beatEnabled, comparison, loadAlwaysGreen, intent, unit]);
 
   function persist(next: { weight?: number; reps?: number }) {
     void repository.updateSet(set.id, next);
@@ -619,8 +644,10 @@ function SetRow({
       <div className="mt-1 flex items-center justify-between pl-10">
         {set.is_warmup ? (
           <span className="text-[11px] font-medium text-amber-400">Warm-up (not counted)</span>
-        ) : (
+        ) : beatEnabled ? (
           <BeatBadge evaluation={evaluation} />
+        ) : (
+          <span />
         )}
         <button
           onClick={remove}
