@@ -1,7 +1,15 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
 import { Button, ErrorState, Modal, Spinner, TextField } from '../components/ui';
+import {
+  ChevronRight,
+  KpiValue,
+  Panel,
+  PanelHeader,
+  ProgressBar,
+  SectionHeader,
+} from '../components/primitives';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { useAnimationProgress } from '../hooks/useAnimationProgress';
@@ -95,7 +103,7 @@ export function NutritionScreen() {
         kicker={prettyDate(date)}
         title="Nutrition"
         action={
-          <div className="flex gap-0.5">
+          <div className="flex gap-1.5">
             <StepButton label="Previous day" onClick={() => setDate((d) => shiftDate(d, -1))}>
               ‹
             </StepButton>
@@ -111,23 +119,13 @@ export function NutritionScreen() {
       ) : !day || !settings ? (
         <Spinner />
       ) : (
-        <>
-          <CaloriesBlock totals={day.totals} settings={settings} p={p} />
+        <PageBody>
+          <CaloriesPanel totals={day.totals} settings={settings} p={p} />
 
-          {/* Foods / Meals */}
-          <div className="grid grid-cols-2 gap-0.5 border-b-2 border-white/[0.15] bg-white/[0.15]">
-            <button
-              onClick={() => navigate('/nutrition/foods')}
-              className="bg-ground px-5 py-[15px] text-left text-[11px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:bg-surface"
-            >
-              Foods
-            </button>
-            <button
-              onClick={() => navigate('/nutrition/meals')}
-              className="bg-ground px-5 py-[15px] text-left text-[11px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:bg-surface"
-            >
-              Meals
-            </button>
+          {/* Library shortcuts — open row on the ground */}
+          <div className="grid grid-cols-2 gap-3">
+            <LibraryButton label="Foods" onClick={() => navigate('/nutrition/foods')} />
+            <LibraryButton label="Meals" onClick={() => navigate('/nutrition/meals')} />
           </div>
 
           {MEALS.map(({ type, label }) => (
@@ -139,7 +137,7 @@ export function NutritionScreen() {
               onEdit={setEditing}
             />
           ))}
-        </>
+        </PageBody>
       )}
 
       {addTo && (
@@ -185,14 +183,26 @@ function StepButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="flex h-[34px] w-[34px] items-center justify-center border border-white/[0.18] text-lg text-ink transition-colors hover:bg-surface disabled:cursor-default disabled:border-white/[0.08] disabled:text-ink5 disabled:hover:bg-transparent"
+      className="flex h-[34px] w-[34px] items-center justify-center rounded-control border border-line text-lg text-ink2 transition-colors hover:border-line-strong hover:text-ink disabled:cursor-default disabled:border-hairline disabled:text-ink5 disabled:hover:text-ink5"
     >
       {children}
     </button>
   );
 }
 
-function CaloriesBlock({
+function LibraryButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-between rounded-control border border-line bg-surface px-4 py-3 text-left transition-colors hover:border-line-strong"
+    >
+      <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink">{label}</span>
+      <ChevronRight className="h-4 w-4 text-ink4" />
+    </button>
+  );
+}
+
+function CaloriesPanel({
   totals,
   settings,
   p,
@@ -208,37 +218,37 @@ function CaloriesBlock({
   const met = target !== null && totals.calories >= target;
 
   return (
-    <section className="border-b-2 border-white/[0.15] bg-surface px-5 py-5">
-      <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink3">Calories</div>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-[52px] font-extrabold leading-[0.88] tracking-[-0.045em] tabular-nums text-ink">
-          {formatNumber(calories)}
-        </span>
+    <Panel feature className="p-5">
+      <PanelHeader label="Calories today" />
+      <div className="mt-2.5 flex items-end justify-between gap-3">
+        <KpiValue
+          value={formatNumber(calories)}
+          target={target !== null ? formatNumber(target) : undefined}
+          unit="cal"
+          size="text-[46px]"
+        />
         {target !== null && (
-          <span className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-ink3">
-            / {formatNumber(target)}
-          </span>
+          <div className="mb-2 text-right text-[11px] font-semibold text-ink2">
+            {met ? (
+              <span className="text-accent">Target met</span>
+            ) : (
+              <>
+                <span className="tabular-nums text-ink">{formatNumber(remaining)}</span> left
+              </>
+            )}
+          </div>
         )}
       </div>
 
-      {target !== null && (
-        <>
-          <div className="mt-3 h-2 bg-ground">
-            <div className="h-full bg-accent" style={{ width: `${(ratio * p * 100).toFixed(1)}%` }} />
-          </div>
-          <div className="mt-1 text-[10.5px] text-ink4">
-            {met ? 'Target met' : `${formatNumber(remaining)} left`}
-          </div>
-        </>
-      )}
+      {target !== null && <ProgressBar ratio={ratio} p={p} height="h-2" className="mt-3.5" />}
 
-      <div className="mt-3">
+      <div className="mt-4 space-y-2">
         <MacroRow label="Protein" value={totals.protein} target={settings.protein_target} p={p} />
         <MacroRow label="Carbs" value={totals.carbs} target={settings.carb_target} p={p} />
         <MacroRow label="Fat" value={totals.fat} target={settings.fat_target} p={p} />
-        <MacroRow label="Fiber" value={totals.fiber} target={settings.fiber_target} p={p} fiber />
+        <MacroRow label="Fiber" value={totals.fiber} target={settings.fiber_target} p={p} faint />
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -247,32 +257,27 @@ function MacroRow({
   value,
   target,
   p,
-  fiber,
+  faint = false,
 }: {
   label: string;
   value: number;
   target: number | null;
   p: number;
-  fiber?: boolean;
+  faint?: boolean;
 }) {
   const met = target !== null && value >= target;
   const ratio = target ? Math.min(1, value / target) : 0;
   return (
-    <div className="grid grid-cols-[64px_1fr_88px] items-center gap-3 border-t border-white/[0.08] py-[11px]">
+    <div className="grid grid-cols-[64px_1fr_84px] items-center gap-3 rounded-tile border border-hairline bg-surface2 px-3 py-2">
       <div
-        className={`text-[9.5px] font-extrabold uppercase tracking-[0.13em] ${fiber ? 'text-ink4' : 'text-ink2'}`}
+        className={`text-[9.5px] font-bold uppercase tracking-[0.11em] ${faint ? 'text-ink3' : 'text-ink2'}`}
       >
         {label}
       </div>
-      <div className={`bg-ground ${fiber ? 'h-0.5' : 'h-1'}`}>
-        <div
-          className={`h-full ${fiber ? 'bg-ink5' : met ? 'bg-accent' : 'bg-accent-muted'}`}
-          style={{ width: `${(ratio * p * 100).toFixed(1)}%` }}
-        />
-      </div>
-      <div className={`text-right tabular-nums ${fiber ? 'text-[11.5px] text-ink3' : 'text-[13px]'}`}>
-        <span className={fiber ? '' : 'font-extrabold text-ink'}>{Math.round(value * p)}</span>
-        <span className={fiber ? '' : 'text-ink3'}>{target !== null ? ` / ${target}g` : 'g'}</span>
+      <ProgressBar ratio={ratio} p={p} tone={faint ? 'faint' : met ? 'accent' : 'muted'} height="h-1.5" />
+      <div className="text-right text-[12.5px] tabular-nums">
+        <span className={`font-extrabold ${faint ? 'text-ink2' : 'text-ink'}`}>{Math.round(value * p)}</span>
+        <span className="text-ink3">{target !== null ? ` / ${target}g` : 'g'}</span>
       </div>
     </div>
   );
@@ -291,38 +296,38 @@ function MealSection({
 }) {
   const sectionCalories = entries.reduce((sum, e) => sum + entryTotals(e).calories, 0);
   return (
-    <section className="border-b border-white/[0.08]">
-      <div className="flex items-center justify-between px-5 pb-1 pt-[15px]">
-        <h2 className="text-[14px] font-extrabold text-ink">{label}</h2>
-        <span
-          className={`text-[11px] font-extrabold tabular-nums ${sectionCalories > 0 ? 'text-ink2' : 'text-ink4'}`}
-        >
-          {formatNumber(Math.round(sectionCalories))} cal
-        </span>
-      </div>
+    <section className="pt-1">
+      <SectionHeader
+        label={label}
+        action={
+          <span
+            className={`text-[11px] font-bold tabular-nums ${sectionCalories > 0 ? 'text-ink2' : 'text-ink4'}`}
+          >
+            {formatNumber(Math.round(sectionCalories))} cal
+          </span>
+        }
+      />
 
       {entries.length === 0 ? (
-        <p className="px-5 py-1.5 text-[11.5px] text-ink4">Nothing logged yet.</p>
+        <p className="mt-2 text-[11.5px] text-ink4">Nothing logged yet.</p>
       ) : (
-        <ul>
+        <ul className="mt-1">
           {entries.map((entry) => {
             const totals = entryTotals(entry);
             return (
               <li key={entry.id}>
                 <button
                   onClick={() => onEdit(entry)}
-                  className="flex w-full items-center gap-2 border-t border-white/[0.05] px-5 py-[9px] text-left transition-colors hover:bg-surface"
+                  className="flex w-full items-center gap-2 border-t border-hairline py-2.5 text-left transition-colors first:border-t-0 hover:bg-white/[0.02]"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] text-ink">{entry.name_snapshot}</div>
-                    <div className="text-[10.5px] tabular-nums text-ink3">
+                    <div className="mt-0.5 text-[10.5px] tabular-nums text-ink3">
                       {formatNumber(Math.round(totals.calories))} cal · {Math.round(totals.protein)}p{' '}
                       {Math.round(totals.carbs)}c {Math.round(totals.fat)}f
                     </div>
                   </div>
-                  <span className="text-[11px] font-extrabold tabular-nums text-ink2">
-                    ×{entry.servings}
-                  </span>
+                  <span className="text-[11px] font-bold tabular-nums text-ink2">×{entry.servings}</span>
                   <ChevronRight className="h-[14px] w-[14px] shrink-0 text-ink4" />
                 </button>
               </li>
@@ -333,7 +338,7 @@ function MealSection({
 
       <button
         onClick={onAdd}
-        className="px-5 py-[11px] text-[10px] font-extrabold uppercase tracking-[0.13em] text-accent hover:text-accent-hover"
+        className="mt-2 text-[10px] font-bold uppercase tracking-[0.13em] text-accent hover:text-accent-hover"
       >
         + Add to {label.toLowerCase()}
       </button>
@@ -378,15 +383,15 @@ function ServingsEditor({
         <div className="flex items-center gap-3">
           <button
             onClick={() => step(-0.5)}
-            className="h-9 w-9 bg-slate-800 text-lg text-ink hover:bg-slate-700"
+            className="h-9 w-9 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
             aria-label="Fewer servings"
           >
             −
           </button>
-          <span className="w-10 text-center text-lg font-extrabold tabular-nums">{servings}</span>
+          <span className="w-10 text-center text-lg font-extrabold tabular-nums text-ink">{servings}</span>
           <button
             onClick={() => step(0.5)}
-            className="h-9 w-9 bg-slate-800 text-lg text-ink hover:bg-slate-700"
+            className="h-9 w-9 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
             aria-label="More servings"
           >
             +
@@ -394,23 +399,6 @@ function ServingsEditor({
         </div>
       </div>
     </Modal>
-  );
-}
-
-function ChevronRight({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
   );
 }
 
@@ -511,13 +499,15 @@ function AddEntrySheet({
   return (
     <Modal title={`Add to ${mealLabel}`} onClose={onClose}>
       <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-0.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {ADD_TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`py-2 text-sm font-extrabold ${
-                tab === t.key ? 'bg-accent text-on-accent' : 'bg-slate-800 text-slate-300'
+              className={`rounded-control py-2 text-sm font-bold transition-colors ${
+                tab === t.key
+                  ? 'bg-accent text-on-accent'
+                  : 'border border-line bg-surface2 text-ink2 hover:text-ink'
               }`}
             >
               {t.label}
@@ -540,7 +530,7 @@ function AddEntrySheet({
                 setScanError(null);
                 setScanning(true);
               }}
-              className="flex w-full items-center justify-center gap-2 border border-white/[0.18] py-2.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:border-white/[0.34] hover:bg-surface"
+              className="flex w-full items-center justify-center gap-2 rounded-control border border-line py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink transition-colors hover:border-line-strong hover:bg-surface2"
             >
               <BarcodeIcon className="h-4 w-4" />
               Scan barcode
@@ -566,14 +556,14 @@ function AddEntrySheet({
               No foods yet. Add one from Search, or create it in the Foods library.
             </p>
           ) : (
-            <ul className="max-h-[45vh] divide-y divide-slate-800 overflow-y-auto">
+            <ul className="max-h-[45vh] divide-y divide-hairline overflow-y-auto">
               {filteredFoods.map((food) => (
                 <li key={food.id}>
                   <button
                     onClick={() => onAddFood(food)}
-                    className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-slate-900"
+                    className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-white/[0.03]"
                   >
-                    <span className="text-sm">{food.name}</span>
+                    <span className="text-sm text-ink">{food.name}</span>
                     <span className="text-xs text-ink3 tabular-nums">
                       {formatNumber(food.calories)} cal
                     </span>
@@ -589,12 +579,12 @@ function AddEntrySheet({
             No saved meals yet. Create some in the Meals library.
           </p>
         ) : (
-          <ul className="max-h-[45vh] divide-y divide-slate-800 overflow-y-auto">
+          <ul className="max-h-[45vh] divide-y divide-hairline overflow-y-auto">
             {filteredMeals.map((meal) => (
               <li key={meal.id}>
                 <button
                   onClick={() => onAddMeal(meal)}
-                  className="w-full px-1 py-3 text-left text-sm hover:bg-slate-900"
+                  className="w-full px-1 py-3 text-left text-sm text-ink hover:bg-white/[0.03]"
                 >
                   {meal.name}
                 </button>
@@ -648,12 +638,12 @@ function SearchResults({
     return <p className="py-6 text-center text-sm text-ink3">No matches — try a simpler name.</p>;
   }
   return (
-    <ul className="max-h-[45vh] divide-y divide-slate-800 overflow-y-auto">
+    <ul className="max-h-[45vh] divide-y divide-hairline overflow-y-auto">
       {results.map((r) => (
         <li key={r.key}>
           <button
             onClick={() => onPick(r)}
-            className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-slate-900"
+            className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-white/[0.03]"
           >
             <div className="min-w-0">
               <div className="truncate text-sm text-ink">{r.name}</div>

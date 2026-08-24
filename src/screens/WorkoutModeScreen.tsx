@@ -210,7 +210,7 @@ export function WorkoutModeScreen() {
         <IntentSelector value={workout.intent} onChange={setIntent} />
 
         {detail.exercises.length === 0 ? (
-          <div className=" border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
+          <div className="rounded-panel border border-dashed border-line p-8 text-center text-sm text-ink2">
             No exercises yet. Add one to start logging.
           </div>
         ) : (
@@ -284,7 +284,7 @@ function SessionHeader({
 }) {
   const elapsed = useElapsedSeconds(startedAt);
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-hairline bg-ground/90 px-4 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
         <div className="min-w-0">
           {editing && (
@@ -326,7 +326,7 @@ function EditControls({
 }) {
   const [noteDraft, setNoteDraft] = useState(notes);
   return (
-    <div className="space-y-3 border border-slate-800 bg-slate-900/50 p-4">
+    <div className="space-y-3 rounded-panel border border-line bg-surface p-4">
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-slate-400">Date</span>
         <input
@@ -334,7 +334,7 @@ function EditControls({
           value={date}
           max={new Date().toISOString().slice(0, 10)}
           onChange={(e) => onChangeDate(e.target.value)}
-          className="w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent"
+          className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
       </label>
       <label className="block">
@@ -345,7 +345,7 @@ function EditControls({
           onChange={(e) => setNoteDraft(e.target.value)}
           onBlur={() => onChangeNotes(noteDraft.trim())}
           placeholder="How did it go?"
-          className="w-full border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-accent"
+          className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
       </label>
     </div>
@@ -365,10 +365,10 @@ function IntentSelector({
         <button
           key={intent.value}
           onClick={() => onChange(intent.value)}
-          className={`flex-1  border px-2 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 rounded-control border px-2 py-2 text-xs font-semibold transition-colors ${
             value === intent.value
-              ? 'border-beat bg-beat/15 text-beat'
-              : 'border-slate-700 bg-slate-900 text-slate-300'
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-line bg-surface2 text-ink2 hover:text-ink'
           }`}
         >
           {intent.label}
@@ -442,7 +442,7 @@ function ExerciseBlock({
   }
 
   return (
-    <div className=" border border-slate-800 bg-slate-900/50 p-4">
+    <div className="rounded-panel border border-line bg-surface p-4 shadow-panel">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
@@ -459,19 +459,19 @@ function ExerciseBlock({
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="h-8 w-8  bg-slate-800 text-slate-300 hover:bg-slate-700"
+            className="h-8 w-8 rounded-control bg-surface2 text-ink2 hover:bg-surface3"
             aria-label="Exercise menu"
           >
             ⋯
           </button>
           {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden  border border-slate-700 bg-slate-900 text-sm shadow-xl">
+            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-tile border border-line bg-surface text-sm shadow-raised">
               <button
                 onClick={() => {
                   setSwapping(true);
                   setMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left hover:bg-slate-800"
+                className="block w-full px-3 py-2 text-left hover:bg-surface2"
               >
                 Swap exercise
               </button>
@@ -480,7 +480,7 @@ function ExerciseBlock({
                   remove();
                   setMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left text-fatigued hover:bg-slate-800"
+                className="block w-full px-3 py-2 text-left text-fatigued hover:bg-surface2"
               >
                 Remove
               </button>
@@ -513,7 +513,7 @@ function ExerciseBlock({
 
       <button
         onClick={addSet}
-        className="mt-2 w-full  border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
+        className="mt-2 w-full rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
       >
         + Add set
       </button>
@@ -609,13 +609,13 @@ function SetRow({
   }
 
   return (
-    <div className={`-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
+    <div className={`rounded-tile px-1 py-1.5 ${set.is_completed ? 'bg-surface2/50' : ''}`}>
       {/* Line 1 — the core logging controls */}
       <div className="flex items-center gap-2">
         <button
           onClick={toggleWarmup}
-          className={`h-8 w-8 shrink-0  text-xs font-bold ${
-            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
+          className={`h-8 w-8 shrink-0 rounded-control text-xs font-bold ${
+            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
           }`}
           title="Toggle warm-up"
           aria-label="Toggle warm-up"
@@ -629,10 +629,10 @@ function SetRow({
 
         <button
           onClick={() => onComplete(!set.is_completed)}
-          className={`ml-auto h-9 w-9 shrink-0  text-lg font-bold ${
+          className={`ml-auto h-9 w-9 shrink-0 rounded-control text-lg font-bold transition-colors ${
             set.is_completed
-              ? 'bg-beat text-on-accent'
-              : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              ? 'bg-accent text-on-accent'
+              : 'bg-surface2 text-ink3 hover:bg-surface3'
           }`}
           aria-label={set.is_completed ? 'Mark incomplete' : 'Complete set'}
         >
@@ -685,10 +685,10 @@ function NumberField({
   suffix?: string;
 }) {
   return (
-    <div className="flex items-center  bg-slate-800">
+    <div className="flex items-center rounded-control border border-line bg-surface2">
       <button
         onClick={() => onChange(value - step)}
-        className="h-9 w-7  text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7 rounded-l-control text-ink2 hover:bg-surface3"
         aria-label="Decrease"
       >
         −
@@ -703,7 +703,7 @@ function NumberField({
       />
       <button
         onClick={() => onChange(value + step)}
-        className="h-9 w-7  text-slate-300 hover:bg-slate-700"
+        className="h-9 w-7 rounded-r-control text-ink2 hover:bg-surface3"
         aria-label="Increase"
       >
         +
@@ -715,9 +715,9 @@ function NumberField({
 function RestTimerBar({ rest }: { rest: ReturnType<typeof useRestTimer> }) {
   const pct = rest.total > 0 ? (rest.remaining / rest.total) * 100 : 0;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
-      <div className="h-1 bg-slate-800">
-        <div className="h-full bg-beat transition-all" style={{ width: `${pct}%` }} />
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur">
+      <div className="h-1 bg-surface2">
+        <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
       </div>
       <div
         className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 py-3"
@@ -745,7 +745,7 @@ function TimerButton({ onClick, children }: { onClick: () => void; children: str
   return (
     <button
       onClick={onClick}
-      className=" bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+      className="rounded-control border border-line bg-surface2 px-3 py-1.5 text-sm text-ink2 hover:bg-surface3"
     >
       {children}
     </button>
@@ -777,15 +777,15 @@ function ExercisePicker({
         {state.loading ? (
           <Spinner />
         ) : (
-          <ul className="max-h-[50vh] divide-y divide-slate-800 overflow-y-auto">
+          <ul className="max-h-[50vh] divide-y divide-hairline overflow-y-auto">
             {results.map((ex) => (
               <li key={ex.id}>
                 <button
                   onClick={() => onPick(ex)}
-                  className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-slate-900"
+                  className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-white/[0.03]"
                 >
-                  <span>{ex.name}</span>
-                  <span className="text-xs text-slate-500">{titleCase(ex.equipment)}</span>
+                  <span className="text-ink">{ex.name}</span>
+                  <span className="text-xs text-ink3">{titleCase(ex.equipment)}</span>
                 </button>
               </li>
             ))}
