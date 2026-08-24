@@ -32,12 +32,12 @@ export function MoreScreen() {
         <Panel className="overflow-hidden p-0">
           <ul>
             {ITEMS.map((item) => (
-              <li key={item.label}>
+              <li key={item.label} className="border-t border-hairline first:border-t-0">
                 <button
                   onClick={() =>
                     item.action === 'about' ? setAboutOpen(true) : item.to && navigate(item.to)
                   }
-                  className="flex w-full items-center justify-between gap-3 border-t border-hairline px-4 py-4 text-left transition-colors first:border-t-0 hover:bg-white/[0.03]"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.03]"
                 >
                   <div>
                     <div className="text-[14px] font-extrabold text-ink">{item.label}</div>

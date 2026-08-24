@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
+import { Panel } from '../components/primitives';
 import { Button, EmptyState, Modal, Spinner, TextField } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -53,46 +54,50 @@ export function FoodsScreen() {
         }
       />
 
-      <div className="p-4">
+      <PageBody>
         <TextField
           placeholder="Search foods…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search foods"
         />
-      </div>
 
-      {state.loading ? (
-        <Spinner />
-      ) : foods.length === 0 ? (
-        <EmptyState
-          icon="🥗"
-          title="No foods yet"
-          note="Add the foods you eat often — each entry snapshots its macros when you log it."
-        />
-      ) : (
-        <ul className="divide-y divide-slate-800 border-t border-slate-800">
-          {foods.map((food) => (
-            <li key={food.id} className="flex items-center gap-3 px-4 py-3">
-              <button className="min-w-0 flex-1 text-left" onClick={() => setEditing(food)}>
-                <div className="truncate font-medium">{food.name}</div>
-                <div className="text-xs text-slate-500 tabular-nums">
-                  {formatNumber(food.calories)} cal · {food.protein}p {food.carbs}c {food.fat}f ·{' '}
-                  {food.serving_size}
-                  {food.serving_unit}
-                </div>
-              </button>
-              <button
-                onClick={() => remove(food)}
-                className="h-8 w-8 shrink-0 text-slate-600 hover:text-fatigued"
-                aria-label="Delete food"
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        {state.loading ? (
+          <Spinner />
+        ) : foods.length === 0 ? (
+          <EmptyState
+            title="No foods yet"
+            note="Add the foods you eat often — each entry snapshots its macros when you log it."
+          />
+        ) : (
+          <Panel className="overflow-hidden p-0">
+            <ul>
+              {foods.map((food) => (
+                <li
+                  key={food.id}
+                  className="flex items-center gap-3 border-t border-hairline px-4 py-3 first:border-t-0"
+                >
+                  <button className="min-w-0 flex-1 text-left" onClick={() => setEditing(food)}>
+                    <div className="truncate font-semibold text-ink">{food.name}</div>
+                    <div className="mt-0.5 text-xs tabular-nums text-ink3">
+                      {formatNumber(food.calories)} cal · {food.protein}p {food.carbs}c {food.fat}f ·{' '}
+                      {food.serving_size}
+                      {food.serving_unit}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => remove(food)}
+                    className="h-8 w-8 shrink-0 text-ink4 hover:text-fatigued"
+                    aria-label="Delete food"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
+      </PageBody>
 
       {(creating || editing) && (
         <FoodForm
@@ -180,7 +185,7 @@ function FoodForm({
             onChange={(e) => setServingUnit(e.target.value)}
           />
         </div>
-        <p className="text-xs text-slate-500">Macros are per serving.</p>
+        <p className="text-xs text-ink3">Macros are per serving.</p>
         <div className="grid grid-cols-2 gap-3">
           <NumField label="Calories" value={calories} onChange={setCalories} />
           <NumField label="Protein (g)" value={protein} onChange={setProtein} />

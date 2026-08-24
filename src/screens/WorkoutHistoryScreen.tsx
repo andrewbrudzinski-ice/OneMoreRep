@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
+import { Panel } from '../components/primitives';
 import { EmptyState, ErrorState, Spinner } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -50,16 +51,20 @@ export function WorkoutHistoryScreen() {
           note="Finish a session and it'll show up here — tap any one to review or edit it."
         />
       ) : (
-        <ul>
-          {entries.map((entry) => (
-            <HistoryRow
-              key={entry.workout.id}
-              entry={entry}
-              units={settings.units}
-              onOpen={() => navigate(`/summary/${entry.workout.id}`)}
-            />
-          ))}
-        </ul>
+        <PageBody>
+          <Panel className="overflow-hidden p-0">
+            <ul>
+              {entries.map((entry) => (
+                <HistoryRow
+                  key={entry.workout.id}
+                  entry={entry}
+                  units={settings.units}
+                  onOpen={() => navigate(`/summary/${entry.workout.id}`)}
+                />
+              ))}
+            </ul>
+          </Panel>
+        </PageBody>
       )}
     </>
   );
@@ -77,10 +82,10 @@ function HistoryRow({
   const { workout } = entry;
   const date = workout.completed_at ?? workout.started_at;
   return (
-    <li>
+    <li className="border-t border-hairline first:border-t-0">
       <button
         onClick={onOpen}
-        className="flex w-full items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-[15px] text-left transition-colors hover:bg-surface"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]"
       >
         <div className="min-w-0">
           <div className="truncate text-[15px] font-extrabold tracking-[-0.015em] text-ink">

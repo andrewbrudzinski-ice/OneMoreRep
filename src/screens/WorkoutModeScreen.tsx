@@ -518,7 +518,8 @@ function ExerciseBlock({
         + Add set
       </button>
 
-      {topWeight > 0 && (
+      {/* Plate breakdown only makes sense for a plate-loaded barbell. */}
+      {topWeight > 0 && item.exercise?.equipment === 'barbell' && (
         <div className="mt-3">
           <PlateCalculatorPanel weight={topWeight} unit={settings.units} />
         </div>

@@ -161,10 +161,10 @@ export function ProgressScreen() {
               <SectionHeader label="Exercise trends" />
               <ul className="mt-1">
                 {trackedExercises.map((ex) => (
-                  <li key={ex.id}>
+                  <li key={ex.id} className="border-t border-hairline first:border-t-0">
                     <button
                       onClick={() => navigate(`/history/${ex.id}`)}
-                      className="flex w-full items-center justify-between border-t border-hairline py-3 text-left transition-colors first:border-t-0 hover:bg-white/[0.02]"
+                      className="flex w-full items-center justify-between py-3 text-left transition-colors hover:bg-white/[0.02]"
                     >
                       <span className="text-[13px] text-ink">{ex.name}</span>
                       <ChevronRight className="h-4 w-4 text-ink4" />
