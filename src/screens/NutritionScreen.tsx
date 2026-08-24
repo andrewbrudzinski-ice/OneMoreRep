@@ -315,10 +315,10 @@ function MealSection({
           {entries.map((entry) => {
             const totals = entryTotals(entry);
             return (
-              <li key={entry.id}>
+              <li key={entry.id} className="border-t border-hairline first:border-t-0">
                 <button
                   onClick={() => onEdit(entry)}
-                  className="flex w-full items-center gap-2 border-t border-hairline py-2.5 text-left transition-colors first:border-t-0 hover:bg-white/[0.02]"
+                  className="flex w-full items-center gap-2 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] text-ink">{entry.name_snapshot}</div>
