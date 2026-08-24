@@ -91,9 +91,10 @@ export function AppShell() {
   return (
     <div className="flex min-h-full flex-col md:flex-row">
       {/* Sidebar (desktop) */}
-      <aside className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:border-r md:border-white/[0.14] md:bg-ground md:p-4">
-        <div className="mb-8 px-2">
-          <span className="text-lg font-extrabold tracking-tight text-ink">OneMoreRep</span>
+      <aside className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:border-r md:border-hairline md:bg-ground md:p-4">
+        <div className="mb-8 flex items-center gap-2 px-2">
+          <span className="h-4 w-1.5 rounded-full bg-accent" aria-hidden />
+          <span className="text-[15px] font-extrabold tracking-tight text-ink">OneMoreRep</span>
         </div>
         <nav className="flex flex-col gap-1">
           {TABS.map((tab) => (
@@ -102,14 +103,14 @@ export function AppShell() {
               to={tab.to}
               end={tab.to === '/'}
               className={({ isActive }) =>
-                `relative flex items-center gap-3 px-3 py-2.5 text-sm font-extrabold uppercase tracking-[0.08em] transition-colors ${
-                  isActive ? 'text-accent' : 'text-ink3 hover:text-ink'
+                `relative flex items-center gap-3 rounded-control px-3 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-colors ${
+                  isActive ? 'bg-accent-soft text-accent' : 'text-ink3 hover:bg-white/[0.04] hover:text-ink'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  {isActive && <span className="absolute inset-y-1 left-0 w-0.5 bg-accent" />}
+                  {isActive && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent" />}
                   {tab.icon}
                   <span>{tab.label}</span>
                 </>
@@ -127,10 +128,11 @@ export function AppShell() {
         </div>
       </main>
 
-      {/* Bottom tab bar (mobile) — opaque, no blur, 2px accent bar on active. */}
+      {/* Bottom tab bar (mobile) — opaque, hairline top, active tab lifted onto
+          a soft accent chip with a top accent bar. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-white/[0.14] bg-ground md:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-hairline bg-ground px-2 pt-1.5 shadow-[0_-1px_0_0_rgba(0,0,0,0.4)] md:hidden"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {TABS.map((tab) => (
           <NavLink
@@ -138,15 +140,15 @@ export function AppShell() {
             to={tab.to}
             end={tab.to === '/'}
             className={({ isActive }) =>
-              `relative flex flex-col items-center gap-1.5 pb-[15px] pt-[13px] text-[8.5px] font-extrabold uppercase tracking-[0.11em] transition-colors ${
-                isActive ? 'text-accent' : 'text-ink3'
+              `relative flex flex-col items-center gap-1 rounded-tile py-1.5 text-[8.5px] font-bold uppercase tracking-[0.1em] transition-colors ${
+                isActive ? 'bg-accent-soft text-accent' : 'text-ink3 active:bg-white/[0.04]'
               }`
             }
           >
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <span className="absolute inset-x-0 top-[-1px] h-0.5 bg-accent" />
+                  <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-accent" />
                 )}
                 {tab.icon}
                 <span>{tab.label}</span>

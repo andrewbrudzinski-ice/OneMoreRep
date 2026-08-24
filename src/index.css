@@ -34,25 +34,26 @@
   color-scheme: dark;
 
   /*
-   * Dark palette — retargeted to the redesign's graphite ground + lime accent.
-   * The slate scale is remapped so every existing `slate-*` class recolors to
-   * the new ramp with no per-component change; the rebuilt screens additionally
-   * use the exact named tokens in tailwind.config.js.
+   * Dark palette — a performance-dashboard system on a deep navy-black ground
+   * with layered surfaces and an electric-lime accent. The slate scale is
+   * remapped so legacy `slate-*` classes recolor onto the new ramp with no
+   * per-component change; rebuilt screens use the exact named tokens in
+   * tailwind.config.js (surface / surface2 / surface3, hairline/line borders).
    */
-  --s-50: 248 250 249; /* #F8FAF9 */
-  --s-100: 242 244 243; /* #F2F4F3 — primary ink */
-  --s-200: 226 229 228;
-  --s-300: 176 183 189;
-  --s-400: 152 160 166; /* #98A0A6 — secondary ink */
-  --s-500: 98 106 113; /* #626A71 — tertiary ink */
-  --s-600: 61 68 75; /* #3D444B — faintest ink */
-  --s-700: 45 51 58; /* control border */
-  --s-800: 27 32 39; /* #1B2027 — surface 2 / borders */
-  --s-900: 20 24 29; /* #14181D — surface */
-  --s-950: 13 16 20; /* #0D1014 — page ground */
+  --s-50: 246 248 250; /* #F6F8FA — brightest ink */
+  --s-100: 237 241 245; /* #EDF1F5 — primary ink */
+  --s-200: 209 216 223;
+  --s-300: 165 174 184;
+  --s-400: 143 153 163; /* #8F99A3 — secondary ink */
+  --s-500: 106 116 127; /* #6A747F — tertiary ink */
+  --s-600: 74 82 91; /* #4A525B — faintest ink */
+  --s-700: 42 49 58; /* control border */
+  --s-800: 26 31 39; /* #1A1F27 — surface 2 / inset tracks */
+  --s-900: 18 22 29; /* #12161D — panel surface */
+  --s-950: 10 13 18; /* #0A0D12 — page ground */
 
   --accent: 143 232 30; /* #8FE81E — electric lime */
-  --on-accent: 13 16 20; /* #0D1014 — near-black text on the lime accent */
+  --on-accent: 11 14 19; /* near-black text on the lime accent */
 }
 
 html,

@@ -63,6 +63,35 @@ describe('computeReadiness', () => {
     expect(r.reasons.length).toBeGreaterThan(0);
     expect(r.level).toBe('fresh');
   });
+
+  it('produces a 0–100 index that agrees with the level and tracks fatigue', () => {
+    const rested = computeReadiness({
+      consecutiveTrainingDays: 1,
+      backToBackMuscles: [],
+      recentVolumeAvg: null,
+      priorVolumeAvg: null,
+    });
+    expect(rested.index).toBe(100);
+    expect(rested.level).toBe('fresh');
+
+    const cooked = computeReadiness({
+      consecutiveTrainingDays: 5,
+      backToBackMuscles: ['Legs', 'Back'],
+      recentVolumeAvg: 13000,
+      priorVolumeAvg: 10000,
+    });
+    expect(cooked.level).toBe('fatigued');
+    expect(cooked.index).toBeLessThan(55);
+    expect(cooked.index).toBeGreaterThanOrEqual(5);
+    // More consecutive days can only lower (never raise) the index.
+    const more = computeReadiness({
+      consecutiveTrainingDays: 6,
+      backToBackMuscles: ['Legs', 'Back'],
+      recentVolumeAvg: 13000,
+      priorVolumeAvg: 10000,
+    });
+    expect(more.index).toBeLessThanOrEqual(cooked.index);
+  });
 });
 
 describe('aggregateMuscleVolume', () => {

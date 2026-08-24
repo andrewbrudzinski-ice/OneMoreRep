@@ -24,13 +24,35 @@ export interface ReadinessResult {
   level: ReadinessLevel;
   reasons: string[];
   suggestion: string;
-  score: number;
+  /**
+   * A 0–100 readiness index (100 = fully recovered). A transparent, deterministic
+   * transform of the same signals below — a lighter read when your log shows a
+   * long streak, back-to-back muscle days, or rising volume. Not a medical or
+   * recovery-science score (see the disclaimer); it only summarises your own log.
+   */
+  index: number;
+  /** Raw accumulated fatigue penalty (0 = none) — the inverse basis of `index`. */
+  penalty: number;
   /**
    * The raw signals the engine read, echoed back so the UI can surface them
    * (e.g. the Home readiness "signals" grid) and keep the level auditable.
    * Presentational only — no new metric is invented here.
    */
   input: ReadinessInput;
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+/** Fatigue points for a consecutive-training-day streak (steeper as it grows). */
+function dayPenalty(days: number): number {
+  if (days <= 1) return 0;
+  if (days === 2) return 14;
+  if (days === 3) return 26;
+  if (days === 4) return 36;
+  if (days === 5) return 44;
+  return Math.min(60, 44 + (days - 5) * 4);
 }
 
 function formatList(items: string[]): string {
@@ -41,23 +63,17 @@ function formatList(items: string[]): string {
 }
 
 export function computeReadiness(input: ReadinessInput): ReadinessResult {
-  let score = 0;
+  let penalty = 0;
   const reasons: string[] = [];
 
   const days = input.consecutiveTrainingDays;
-  if (days >= 5) {
-    score += 3;
+  penalty += dayPenalty(days);
+  if (days >= 2) {
     reasons.push(`${days} training days in a row`);
-  } else if (days >= 3) {
-    score += 2;
-    reasons.push(`${days} training days in a row`);
-  } else if (days === 2) {
-    score += 1;
-    reasons.push('2 training days in a row');
   }
 
   if (input.backToBackMuscles.length > 0) {
-    score += Math.min(2, input.backToBackMuscles.length);
+    penalty += Math.min(3, input.backToBackMuscles.length) * 8;
     reasons.push(`${formatList(input.backToBackMuscles)} trained 2 days running`);
   }
 
@@ -68,10 +84,10 @@ export function computeReadiness(input: ReadinessInput): ReadinessResult {
   ) {
     const ratio = input.recentVolumeAvg / input.priorVolumeAvg;
     if (ratio >= 1.15) {
-      score += 1;
+      penalty += 8;
       reasons.push('Volume trending up');
     } else if (ratio <= 0.85) {
-      score -= 1;
+      penalty -= 8; // easing back eases fatigue
       reasons.push('Volume trending down');
     } else {
       reasons.push('Volume trending flat');
@@ -82,9 +98,13 @@ export function computeReadiness(input: ReadinessInput): ReadinessResult {
     reasons.push('No recent fatigue signals');
   }
 
+  penalty = Math.max(0, penalty);
+  const index = clamp(Math.round(100 - penalty), 5, 100);
+
+  // Thresholds chosen so the index and the qualitative level always agree.
   let level: ReadinessLevel;
-  if (score <= 0) level = 'fresh';
-  else if (score <= 2) level = 'moderate';
+  if (index >= 85) level = 'fresh';
+  else if (index >= 55) level = 'moderate';
   else level = 'fatigued';
 
   const suggestion =
@@ -94,5 +114,5 @@ export function computeReadiness(input: ReadinessInput): ReadinessResult {
         ? 'A normal or a lighter day both work.'
         : 'Consider a lighter day or a rest day.';
 
-  return { level, reasons, suggestion, score, input };
+  return { level, reasons, suggestion, index, penalty, input };
 }

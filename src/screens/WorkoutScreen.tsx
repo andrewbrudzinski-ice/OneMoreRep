@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
 import { EmptyState, ErrorState, Spinner } from '../components/ui';
+import { ArrowRight, Panel, PrimaryAction, SectionHeader, SectionLabel } from '../components/primitives';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { dayLabel } from '../lib/labels';
@@ -69,7 +70,7 @@ export function WorkoutScreen() {
         action={
           <button
             onClick={createAndEdit}
-            className="flex items-center gap-1.5 border border-white/[0.18] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink transition-colors hover:border-white/[0.34] hover:bg-surface"
+            className="flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink transition-colors hover:border-line-strong"
           >
             <Plus className="h-[13px] w-[13px]" />
             Routine
@@ -77,91 +78,83 @@ export function WorkoutScreen() {
         }
       />
 
-      {/* Resume banner — flat, accent left border. */}
-      {active && (
-        <button
-          onClick={() => navigate(`/session/${active.id}`)}
-          className="flex w-full items-center justify-between border-b border-white/[0.08] border-l-2 border-l-accent bg-surface px-5 py-[15px] text-left"
-        >
-          <div>
-            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink3">
-              Resume workout
-            </div>
-            <div className="mt-0.5 text-[14px] font-extrabold text-ink">
-              {active.name} · in progress
-            </div>
-          </div>
-          <ArrowRight className="h-[18px] w-[18px] text-accent" />
-        </button>
-      )}
-
-      {/* Start empty workout — the promoted primary CTA. */}
-      <button
-        onClick={startEmpty}
-        className="flex w-full items-center justify-between border-b-2 border-white/[0.15] bg-accent px-5 py-[19px] text-left text-on-accent transition-colors hover:bg-accent-hover active:bg-accent-press"
-      >
-        <span className="text-[12px] font-extrabold uppercase tracking-[0.1em]">
-          Start empty workout
-        </span>
-        <ArrowRight className="h-[19px] w-[19px]" />
-      </button>
-
-      <div className="px-5 pb-1 pt-[18px]">
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink3">
-          Routines
-        </span>
-      </div>
-
-      {state.error ? (
-        <ErrorState error={state.error} onRetry={state.reload} />
-      ) : state.loading ? (
-        <Spinner />
-      ) : routines.length === 0 ? (
-        <EmptyState
-          title="No routines yet"
-          note="Create a routine to plan your sets, reps, and exercise order — then start it in one tap."
-        />
-      ) : (
-        <ul>
-          {routines.map(({ routine, count }) => (
-            <li
-              key={routine.id}
-              className="grid grid-cols-[1fr_auto] gap-3 border-b border-white/[0.08] px-5 py-[15px]"
-            >
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="truncate text-[16px] font-extrabold tracking-[-0.015em] text-ink">
-                    {routine.name}
-                  </span>
-                  <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.13em] text-ink4">
-                    {dayLabel(routine.day_of_week)}
-                  </span>
-                </div>
-                <div className="mt-1 text-[12px] text-ink2">
-                  {count} {count === 1 ? 'exercise' : 'exercises'}
-                  {routine.notes ? ` · ${routine.notes}` : ''}
-                </div>
-                <div className="mt-2 flex gap-4">
-                  <TextButton onClick={() => navigate(`/workout/routines/${routine.id}`)}>
-                    Edit
-                  </TextButton>
-                  <TextButton onClick={() => duplicate(routine.id)}>Duplicate</TextButton>
-                  <TextButton onClick={() => remove(routine.id)} danger>
-                    Delete
-                  </TextButton>
-                </div>
+      <PageBody>
+        {/* Resume banner */}
+        {active && (
+          <Panel
+            interactive
+            onClick={() => navigate(`/session/${active.id}`)}
+            ariaLabel="Resume workout"
+            className="flex items-center justify-between gap-3 p-4"
+          >
+            <div className="flex items-center gap-3">
+              <span className="h-8 w-[3px] rounded-full bg-accent" aria-hidden />
+              <div>
+                <SectionLabel>Resume workout</SectionLabel>
+                <div className="mt-1 text-[14px] font-extrabold text-ink">{active.name} · in progress</div>
               </div>
-              <button
-                onClick={() => startFromRoutine(routine)}
-                disabled={count === 0}
-                className="self-start border border-accent px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent hover:text-on-accent disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
-              >
-                Start
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+            <ArrowRight className="h-[18px] w-[18px] text-accent" />
+          </Panel>
+        )}
+
+        {/* Start empty workout — primary CTA */}
+        <PrimaryAction onClick={startEmpty} label="Start empty workout" />
+
+        {/* Routines */}
+        <section className="pt-1">
+          <SectionHeader label="Routines" />
+
+          {state.error ? (
+            <ErrorState error={state.error} onRetry={state.reload} />
+          ) : state.loading ? (
+            <Spinner />
+          ) : routines.length === 0 ? (
+            <EmptyState
+              title="No routines yet"
+              note="Create a routine to plan your sets, reps, and exercise order — then start it in one tap."
+            />
+          ) : (
+            <ul className="mt-1">
+              {routines.map(({ routine, count }) => (
+                <li
+                  key={routine.id}
+                  className="grid grid-cols-[1fr_auto] gap-3 border-t border-hairline py-4 first:border-t-0"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="truncate text-[16px] font-extrabold tracking-[-0.015em] text-ink">
+                        {routine.name}
+                      </span>
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.13em] text-ink4">
+                        {dayLabel(routine.day_of_week)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[12px] text-ink2">
+                      {count} {count === 1 ? 'exercise' : 'exercises'}
+                      {routine.notes ? ` · ${routine.notes}` : ''}
+                    </div>
+                    <div className="mt-2 flex gap-4">
+                      <TextButton onClick={() => navigate(`/workout/routines/${routine.id}`)}>Edit</TextButton>
+                      <TextButton onClick={() => duplicate(routine.id)}>Duplicate</TextButton>
+                      <TextButton onClick={() => remove(routine.id)} danger>
+                        Delete
+                      </TextButton>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => startFromRoutine(routine)}
+                    disabled={count === 0}
+                    className="self-start rounded-control border border-accent px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent hover:text-on-accent disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
+                  >
+                    Start
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </PageBody>
     </>
   );
 }
@@ -178,30 +171,12 @@ function TextButton({
   return (
     <button
       onClick={onClick}
-      className={`text-[9.5px] font-extrabold uppercase tracking-[0.13em] transition-colors ${
+      className={`text-[9.5px] font-bold uppercase tracking-[0.13em] transition-colors ${
         danger ? 'text-ink4 hover:text-fatigued' : 'text-ink2 hover:text-ink'
       }`}
     >
       {children}
     </button>
-  );
-}
-
-function ArrowRight({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.25}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M5 12h14" />
-      <path d="m12 5 7 7-7 7" />
-    </svg>
   );
 }
 

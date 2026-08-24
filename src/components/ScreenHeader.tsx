@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 
 /**
- * Shared page header — flat on the page ground with a 2px rule below, an
- * optional accent kicker above the title, and an optional subtitle / action.
+ * Shared page header — sits flat on the page ground with a generous top inset
+ * and a hairline rule below. Optional accent kicker, subtitle, and a trailing
+ * action (kept vertically centered against the title).
  */
 export function ScreenHeader({
   title,
@@ -17,22 +18,39 @@ export function ScreenHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="border-b-2 border-white/[0.15] px-5 pb-[18px] pt-[26px]">
-      <div className="flex items-start justify-between gap-3">
+    <header className="border-b border-hairline px-4 pb-4 pt-7">
+      <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
         <div className="min-w-0">
           {kicker && (
-            <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-accent">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
               {kicker}
             </div>
           )}
-          <h1 className="text-[29px] font-extrabold leading-none tracking-[-0.03em] text-ink">
+          <h1 className="text-[27px] font-extrabold leading-none tracking-[-0.03em] text-ink">
             {title}
           </h1>
-          {subtitle && <p className="mt-2 text-sm text-ink2">{subtitle}</p>}
+          {subtitle && <p className="mt-2 text-[13px] text-ink2">{subtitle}</p>}
         </div>
         {action}
       </div>
     </header>
+  );
+}
+
+/**
+ * The padded, max-width scroll body that panels live in. Gives every screen the
+ * same horizontal gutters and inter-panel rhythm so containers can float on the
+ * ground with consistent margins.
+ */
+export function PageBody({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mx-auto max-w-xl space-y-4 px-4 pb-12 pt-4 ${className}`}>{children}</div>
   );
 }
 

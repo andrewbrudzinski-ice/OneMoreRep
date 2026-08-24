@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SectionHeader } from '../components/primitives';
 import { Button, ErrorState, SelectField, Spinner, TextField } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -108,7 +109,7 @@ function SettingsForm({
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="mx-auto max-w-xl space-y-7 px-4 pb-12 pt-4">
       <Section title="Profile">
         <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
@@ -157,10 +158,10 @@ function SettingsForm({
           value={rest}
           onChange={(e) => setRest(e.target.value)}
         />
-        <label className="flex items-center justify-between gap-3  border border-slate-800 bg-slate-900/50 p-3">
-          <span className="text-sm">
-            <span className="font-medium">Load always green</span>
-            <span className="mt-0.5 block text-xs text-slate-500">
+        <label className="flex items-center justify-between gap-3 rounded-tile border border-line bg-surface2 p-3.5">
+          <span className="text-sm text-ink">
+            <span className="font-semibold">Load always green</span>
+            <span className="mt-0.5 block text-xs text-ink3">
               Heavier weight always reads green (with honest e1RM in detail).
             </span>
           </span>
@@ -172,10 +173,10 @@ function SettingsForm({
           />
         </label>
 
-        <label className="flex items-center justify-between gap-3  border border-slate-800 bg-slate-900/50 p-3">
-          <span className="text-sm">
-            <span className="font-medium">Beat Last Time badge</span>
-            <span className="mt-0.5 block text-xs text-slate-500">
+        <label className="flex items-center justify-between gap-3 rounded-tile border border-line bg-surface2 p-3.5">
+          <span className="text-sm text-ink">
+            <span className="font-semibold">Beat Last Time badge</span>
+            <span className="mt-0.5 block text-xs text-ink3">
               Show Beat / Matched / Down while logging. Turn off to just log.
             </span>
           </span>
@@ -213,7 +214,7 @@ function SettingsForm({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-slate-300">{title}</h2>
+      <SectionHeader label={title} />
       {children}
     </section>
   );

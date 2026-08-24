@@ -1,11 +1,10 @@
 import { READINESS_DISCLAIMER, type ReadinessLevel, type ReadinessResult } from '../lib/readiness';
+import { Divider, Panel, PanelHeader, Ring } from './primitives';
 
-const LEVELS: ReadinessLevel[] = ['fresh', 'moderate', 'fatigued'];
-
-const LEVEL_META: Record<ReadinessLevel, { word: string; label: string; color: string }> = {
-  fresh: { word: 'PRIMED', label: 'Primed', color: '#8FE81E' },
-  moderate: { word: 'MODERATE', label: 'Moderate', color: '#F2B33D' },
-  fatigued: { word: 'FATIGUED', label: 'Fatigued', color: '#FB923C' },
+const LEVEL_META: Record<ReadinessLevel, { word: string; state: string; color: string }> = {
+  fresh: { word: 'PRIMED', state: 'Recovered', color: '#8FE81E' },
+  moderate: { word: 'MODERATE', state: 'Managed', color: '#F2B33D' },
+  fatigued: { word: 'FATIGUED', state: 'Loaded', color: '#FB923C' },
 };
 
 /** VOLUME TREND from the recent-vs-prior working-volume averages. */
@@ -17,86 +16,88 @@ function volumeTrend(recent: number | null, prior: number | null): string {
   return 'Flat';
 }
 
-function Signal({ label, value, first }: { label: string; value: string; first?: boolean }) {
+/** One open signal column (no box) — label over value, divided by hairlines. */
+function Signal({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`px-[14px] py-3 ${first ? '' : 'border-l border-white/[0.08]'}`}>
-      <div className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-ink3">{label}</div>
-      <div className="mt-1 truncate text-[15px] font-extrabold tabular-nums text-ink">{value}</div>
+    <div className="px-3 first:pl-0 last:pr-0">
+      <div className="text-[8.5px] font-bold uppercase leading-none tracking-[0.1em] text-ink3">
+        {label}
+      </div>
+      <div className="mt-1.5 truncate text-[14px] font-extrabold leading-none tabular-nums text-ink">
+        {value}
+      </div>
     </div>
   );
 }
 
 /**
- * Training-readiness poster — qualitative, non-medical. The level word and a
- * 3-segment state ladder replace the emoji dot; the signals grid surfaces the
- * inputs the engine actually read so the level stays auditable.
+ * Training-readiness hero — a 0–100 index ring (transparent transform of the
+ * user's own log, not a medical score) with the qualitative level beside it and
+ * the engine's real input signals below as open, divided columns.
  */
-export function ReadinessCard({ readiness }: { readiness: ReadinessResult }) {
+export function ReadinessCard({ readiness, p = 1 }: { readiness: ReadinessResult; p?: number }) {
   const meta = LEVEL_META[readiness.level];
   const { input } = readiness;
   const backToBack =
-    input.backToBackMuscles.length === 0 ? 'None' : input.backToBackMuscles.join(', ');
+    input.backToBackMuscles.length === 0 ? 'None' : String(input.backToBackMuscles.length);
+  const score = Math.round(readiness.index * p);
 
   return (
-    <section className="border-t-2 border-accent bg-surface">
-      {/* Label row */}
-      <div className="flex items-center justify-between px-5 pb-1 pt-4">
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink3">
-          Readiness
-        </span>
-        <span className="text-[11px] text-ink3">Today</span>
-      </div>
+    <Panel feature className="p-5">
+      <PanelHeader
+        label="Training readiness"
+        action={<span className="text-[11px] font-medium text-ink3">Today</span>}
+      />
 
-      {/* Level word */}
-      <div
-        className="px-5 text-[56px] font-extrabold leading-[0.86] tracking-[-0.045em]"
-        style={{ color: meta.color }}
-      >
-        {meta.word}
-      </div>
+      <div className="mt-4 flex items-start gap-5">
+        <Ring value={readiness.index} p={p} color={meta.color} size={118}>
+          <span className="text-[33px] font-extrabold leading-none tabular-nums" style={{ color: meta.color }}>
+            {score}
+          </span>
+          <span className="mt-1 text-[8.5px] font-bold uppercase tracking-[0.14em] text-ink3">
+            Ready
+          </span>
+        </Ring>
 
-      {/* State ladder */}
-      <div className="grid grid-cols-3 gap-[3px] px-5 pt-4">
-        {LEVELS.map((level) => {
-          const active = level === readiness.level;
-          return (
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-center gap-2.5">
             <div
-              key={level}
-              className="px-0.5 py-1.5 text-center text-[8.5px] font-extrabold uppercase tracking-[0.12em] transition-[background-color,color] duration-[250ms]"
-              style={
-                active
-                  ? { background: LEVEL_META[level].color, color: '#0D1014' }
-                  : { background: '#1B2027', color: '#7A838B' }
-              }
+              className="text-[28px] font-extrabold leading-[0.9] tracking-[-0.03em]"
+              style={{ color: meta.color }}
             >
-              {LEVEL_META[level].label}
+              {meta.word}
             </div>
-          );
-        })}
+            <div
+              className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+              style={{ background: `${meta.color}1F`, color: meta.color }}
+            >
+              {meta.state}
+            </div>
+          </div>
+          <p className="mt-2 text-[13px] leading-[1.45] text-ink2">{readiness.suggestion}</p>
+          {readiness.reasons.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {readiness.reasons.slice(0, 2).map((reason) => (
+                <li key={reason} className="flex gap-2 text-[11.5px] leading-snug text-ink3">
+                  <span className="mt-[1px] text-ink5">—</span>
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
-      {/* Suggestion */}
-      <p className="px-5 pt-4 text-[14px] leading-[1.45] text-ink">{readiness.suggestion}</p>
+      <Divider className="mt-4" />
 
-      {/* Reasons */}
-      <ul className="px-5 pt-2">
-        {readiness.reasons.map((reason) => (
-          <li key={reason} className="flex gap-2 py-0.5 text-[12.5px] leading-snug text-ink2">
-            <span className="text-ink5">—</span>
-            <span>{reason}</span>
-          </li>
-        ))}
-      </ul>
-
-      {/* Signals grid — the inputs the engine reads */}
-      <div className="mt-3 grid grid-cols-3 border-t border-white/[0.08]">
-        <Signal label="Consec. days" value={String(input.consecutiveTrainingDays)} first />
+      {/* Signals — open, divided columns (no boxes) */}
+      <div className="mt-3.5 flex divide-x divide-hairline">
+        <Signal label="Days on" value={String(input.consecutiveTrainingDays)} />
         <Signal label="Back-to-back" value={backToBack} />
-        <Signal label="Volume trend" value={volumeTrend(input.recentVolumeAvg, input.priorVolumeAvg)} />
+        <Signal label="Vol. trend" value={volumeTrend(input.recentVolumeAvg, input.priorVolumeAvg)} />
       </div>
 
-      {/* Disclaimer */}
-      <p className="px-5 pb-[14px] pt-2 text-[10.5px] text-ink4">{READINESS_DISCLAIMER}</p>
-    </section>
+      <p className="mt-4 text-[10.5px] leading-tight text-ink4">{READINESS_DISCLAIMER}</p>
+    </Panel>
   );
 }
