@@ -100,7 +100,7 @@ export function PanelAction({
         e.stopPropagation();
         onClick();
       }}
-      className="-mr-1 inline-flex items-center gap-1 rounded-control px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent-soft"
+      className="-my-1 -mr-1.5 inline-flex items-center gap-1 rounded-control px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent-soft"
     >
       {children}
     </button>

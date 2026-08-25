@@ -183,7 +183,7 @@ function StepButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="flex h-[34px] w-[34px] items-center justify-center rounded-control border border-line text-lg text-ink2 transition-colors hover:border-line-strong hover:text-ink disabled:cursor-default disabled:border-hairline disabled:text-ink5 disabled:hover:text-ink5"
+      className="flex h-10 w-10 items-center justify-center rounded-control border border-line text-lg text-ink2 transition-colors hover:border-line-strong hover:text-ink disabled:cursor-default disabled:border-hairline disabled:text-ink5 disabled:hover:text-ink5"
     >
       {children}
     </button>
