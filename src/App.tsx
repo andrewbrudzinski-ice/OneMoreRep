@@ -1,8 +1,7 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Spinner } from './components/ui';
 import { RepositoryProvider } from './repository/RepositoryContext';
 import { useRepositoryContext } from './repository/repositoryContext';
 import { applyTheme } from './lib/theme';
@@ -19,25 +18,15 @@ import { WorkoutHistoryScreen } from './screens/WorkoutHistoryScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DataScreen } from './screens/DataScreen';
 import { MethodologyScreen } from './screens/MethodologyScreen';
-
-// Analysis screens pull in Recharts — load them on demand to keep the initial
-// (training-mode) bundle lean.
-const ProgressScreen = lazy(() =>
-  import('./screens/ProgressScreen').then((m) => ({ default: m.ProgressScreen })),
-);
-const ExerciseHistoryScreen = lazy(() =>
-  import('./screens/ExerciseHistoryScreen').then((m) => ({ default: m.ExerciseHistoryScreen })),
-);
-const WorkoutSummaryScreen = lazy(() =>
-  import('./screens/WorkoutSummaryScreen').then((m) => ({ default: m.WorkoutSummaryScreen })),
-);
-const BodyweightScreen = lazy(() =>
-  import('./screens/BodyweightScreen').then((m) => ({ default: m.BodyweightScreen })),
-);
-
-function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<Spinner />}>{children}</Suspense>;
-}
+// Analysis screens were previously code-split, but on an installed PWA a lazy
+// chunk can 404 after a redeploy (its hashed filename changes), white-screening
+// the tab with "Importing a module script failed". Importing them statically
+// keeps the whole app in the precached bundle, so navigation never fetches an
+// on-demand chunk that might be missing. (See vite:preloadError recovery in main.tsx.)
+import { ProgressScreen } from './screens/ProgressScreen';
+import { ExerciseHistoryScreen } from './screens/ExerciseHistoryScreen';
+import { WorkoutSummaryScreen } from './screens/WorkoutSummaryScreen';
+import { BodyweightScreen } from './screens/BodyweightScreen';
 
 const router = createBrowserRouter([
   {
@@ -50,48 +39,20 @@ const router = createBrowserRouter([
       { path: 'nutrition', element: <NutritionScreen /> },
       { path: 'nutrition/foods', element: <FoodsScreen /> },
       { path: 'nutrition/meals', element: <MealsScreen /> },
-      {
-        path: 'progress',
-        element: (
-          <Lazy>
-            <ProgressScreen />
-          </Lazy>
-        ),
-      },
+      { path: 'progress', element: <ProgressScreen /> },
       { path: 'more', element: <MoreScreen /> },
       { path: 'more/history', element: <WorkoutHistoryScreen /> },
       { path: 'more/exercises', element: <ExercisesScreen /> },
       { path: 'more/settings', element: <SettingsScreen /> },
       { path: 'more/data', element: <DataScreen /> },
       { path: 'more/methodology', element: <MethodologyScreen /> },
-      {
-        path: 'history/:exerciseId',
-        element: (
-          <Lazy>
-            <ExerciseHistoryScreen />
-          </Lazy>
-        ),
-      },
-      {
-        path: 'bodyweight',
-        element: (
-          <Lazy>
-            <BodyweightScreen />
-          </Lazy>
-        ),
-      },
+      { path: 'history/:exerciseId', element: <ExerciseHistoryScreen /> },
+      { path: 'bodyweight', element: <BodyweightScreen /> },
     ],
   },
   // Workout Mode + summary are full-screen (no tab bar).
   { path: '/session/:workoutId', element: <WorkoutModeScreen /> },
-  {
-    path: '/summary/:workoutId',
-    element: (
-      <Lazy>
-        <WorkoutSummaryScreen />
-      </Lazy>
-    ),
-  },
+  { path: '/summary/:workoutId', element: <WorkoutSummaryScreen /> },
 ], {
   // Honor the deploy base path (e.g. GitHub Project Pages subpath).
   basename: import.meta.env.BASE_URL,
