@@ -220,6 +220,8 @@ export function WorkoutModeScreen() {
         <Button variant="secondary" className="w-full" onClick={() => setPicking(true)}>
           + Add exercise
         </Button>
+
+        {!editing && <SessionNotes notes={workout.notes} onChangeNotes={changeNotes} />}
       </div>
 
       {rest.active && <RestTimerBar rest={rest} />}
@@ -332,6 +334,33 @@ function EditControls({
           onBlur={() => onChangeNotes(noteDraft.trim())}
           placeholder="How did it go?"
           className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent"
+        />
+      </label>
+    </div>
+  );
+}
+
+function SessionNotes({
+  notes,
+  onChangeNotes,
+}: {
+  notes: string;
+  onChangeNotes: (notes: string) => void;
+}) {
+  const [draft, setDraft] = useState(notes);
+  return (
+    <div className="rounded-panel border border-line bg-surface p-4 shadow-panel">
+      <label className="block">
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink3">
+          Session notes
+        </span>
+        <textarea
+          value={draft}
+          rows={2}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => draft.trim() !== notes.trim() && onChangeNotes(draft.trim())}
+          placeholder="How did it go? Anything to remember for next time…"
+          className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-sm text-ink outline-none placeholder:text-ink4 focus:border-accent"
         />
       </label>
     </div>

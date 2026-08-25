@@ -68,6 +68,16 @@ export function WorkoutSummaryScreen() {
           </div>
         </Panel>
 
+        {/* Notes — only when the session has any */}
+        {summary.workout.notes.trim() && (
+          <Panel className="p-4">
+            <PanelHeader label="Notes" />
+            <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink2">
+              {summary.workout.notes}
+            </p>
+          </Panel>
+        )}
+
         {/* New PRs — open section */}
         <section className="pt-1">
           <SectionHeader
