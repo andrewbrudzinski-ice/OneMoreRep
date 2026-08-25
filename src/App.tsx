@@ -18,6 +18,7 @@ import { ExercisesScreen } from './screens/ExercisesScreen';
 import { WorkoutHistoryScreen } from './screens/WorkoutHistoryScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DataScreen } from './screens/DataScreen';
+import { MethodologyScreen } from './screens/MethodologyScreen';
 
 // Analysis screens pull in Recharts — load them on demand to keep the initial
 // (training-mode) bundle lean.
@@ -62,6 +63,7 @@ const router = createBrowserRouter([
       { path: 'more/exercises', element: <ExercisesScreen /> },
       { path: 'more/settings', element: <SettingsScreen /> },
       { path: 'more/data', element: <DataScreen /> },
+      { path: 'more/methodology', element: <MethodologyScreen /> },
       {
         path: 'history/:exerciseId',
         element: (

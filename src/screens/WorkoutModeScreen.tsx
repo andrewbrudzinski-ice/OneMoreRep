@@ -14,7 +14,6 @@ import { filterExercises } from '../lib/exerciseSearch';
 import { titleCase } from '../lib/labels';
 import type {
   LastSession,
-  RecentBest,
   WorkoutDetail,
   WorkoutExerciseWithSets,
 } from '../repository/Repository';
@@ -31,7 +30,6 @@ interface LoadedData {
   detail: WorkoutDetail;
   settings: Settings;
   lastByExercise: Map<string, LastSession | undefined>;
-  recentBestByExercise: Map<string, RecentBest | undefined>;
   suggestionByExercise: Map<string, AutoRegResult>;
   restByExercise: Map<string, number | null>;
 }
@@ -54,20 +52,11 @@ export function WorkoutModeScreen() {
     ]);
     if (!detail) return null;
     const exIds = [...new Set(detail.exercises.map((e) => e.exercise_id))];
-    const [lastList, restList, recentBestList] = await Promise.all([
+    const [lastList, restList] = await Promise.all([
       Promise.all(exIds.map((id) => repository.getLastSession(id, { excludeWorkoutId: workoutId }))),
       Promise.all(exIds.map((id) => repository.getLastRestSeconds(id))),
-      Promise.all(
-        exIds.map((id) =>
-          repository.getRecentBest(id, {
-            withinWeeks: settings.beat_lookback_weeks,
-            excludeWorkoutId: workoutId,
-          }),
-        ),
-      ),
     ]);
     const lastByExercise = new Map(exIds.map((id, i) => [id, lastList[i]]));
-    const recentBestByExercise = new Map(exIds.map((id, i) => [id, recentBestList[i]]));
     // Auto-regulation suggestion, targeting the top rep count from last time.
     const suggestionList = await Promise.all(
       exIds.map((id) => {
@@ -80,7 +69,6 @@ export function WorkoutModeScreen() {
       detail,
       settings,
       lastByExercise,
-      recentBestByExercise,
       suggestionByExercise: new Map(exIds.map((id, i) => [id, suggestionList[i]!])),
       restByExercise: new Map(exIds.map((id, i) => [id, restList[i]!])),
     };
@@ -128,8 +116,7 @@ export function WorkoutModeScreen() {
     );
   }
 
-  const { detail, settings, lastByExercise, recentBestByExercise, suggestionByExercise, restByExercise } =
-    state.data;
+  const { detail, settings, lastByExercise, suggestionByExercise, restByExercise } = state.data;
   const { workout } = detail;
   // A completed workout opens in edit mode: no timer, no auto-seed, "Done"
   // recomputes PRs instead of "Finish" closing the session.
@@ -219,7 +206,6 @@ export function WorkoutModeScreen() {
               key={item.id}
               item={item}
               last={lastByExercise.get(item.exercise_id)}
-              recentBest={recentBestByExercise.get(item.exercise_id)}
               suggestion={suggestionByExercise.get(item.exercise_id)}
               rememberedRest={restByExercise.get(item.exercise_id) ?? null}
               settings={settings}
@@ -381,7 +367,6 @@ function IntentSelector({
 function ExerciseBlock({
   item,
   last,
-  recentBest,
   suggestion,
   rememberedRest,
   settings,
@@ -392,7 +377,6 @@ function ExerciseBlock({
 }: {
   item: WorkoutExerciseWithSets;
   last: LastSession | undefined;
-  recentBest: RecentBest | undefined;
   suggestion: AutoRegResult | undefined;
   rememberedRest: number | null;
   settings: Settings;
@@ -405,12 +389,28 @@ function ExerciseBlock({
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  // Beat Last Time compares each set to the single strongest set from the last
-  // few weeks (see settings.beat_lookback_weeks) — one stable baseline, so the
-  // verdict no longer flips as you scrub the weight.
-  const comparison: ComparableSet | null = recentBest
-    ? { weight: recentBest.weight, reps: recentBest.reps }
-    : null;
+  // Beat Last Time compares each set, in order, to the SAME set number from the
+  // last time you did this exercise (set 1 vs set 1, set 2 vs set 2, …) — so the
+  // ±weight is for that specific set's counterpart, not a session peak. Only the
+  // most recent session counts, and only if it's within the staleness window.
+  const priorWorking = useMemo(() => {
+    if (!last) return [];
+    const ageMs = Date.now() - new Date(last.workout.completed_at ?? last.workout.started_at).getTime();
+    const withinWindow = ageMs <= settings.beat_lookback_weeks * 7 * 24 * 60 * 60 * 1000;
+    if (!withinWindow) return [];
+    return last.sets
+      .filter((s) => !s.is_warmup)
+      .sort((a, b) => a.set_number - b.set_number)
+      .map((s) => ({ weight: s.weight, reps: s.reps }) as ComparableSet);
+  }, [last, settings.beat_lookback_weeks]);
+
+  // Map each working set's id to its position among the working sets, so a row
+  // can look up its counterpart from last time by index.
+  const workingIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    item.sets.filter((s) => !s.is_warmup).forEach((s, i) => map.set(s.id, i));
+    return map;
+  }, [item.sets]);
 
   const topWeight = useMemo(() => {
     const working = item.sets.filter((s) => !s.is_warmup);
@@ -447,14 +447,6 @@ function ExerciseBlock({
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
           <LastTimeRow last={last} />
-          {settings.beat_comparison_enabled && recentBest && (
-            <div className="mt-0.5 text-xs text-accent/80">
-              <span className="font-medium">BEST ({settings.beat_lookback_weeks} WK)</span>{' '}
-              <span className="tabular-nums">
-                {recentBest.weight}×{recentBest.reps}
-              </span>
-            </div>
-          )}
         </div>
         <div className="relative shrink-0">
           <button
@@ -496,19 +488,23 @@ function ExerciseBlock({
       )}
 
       <div className="mt-3 space-y-1.5">
-        {item.sets.map((set) => (
-          <SetRow
-            key={set.id}
-            set={set}
-            unit={settings.units}
-            comparison={comparison}
-            beatEnabled={settings.beat_comparison_enabled}
-            loadAlwaysGreen={settings.load_always_green}
-            intent={intent}
-            onChanged={onChanged}
-            onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
-          />
-        ))}
+        {item.sets.map((set) => {
+          const workingIndex = workingIndexById.get(set.id);
+          const comparison = workingIndex === undefined ? null : (priorWorking[workingIndex] ?? null);
+          return (
+            <SetRow
+              key={set.id}
+              set={set}
+              unit={settings.units}
+              comparison={comparison}
+              beatEnabled={settings.beat_comparison_enabled}
+              loadAlwaysGreen={settings.load_always_green}
+              intent={intent}
+              onChanged={onChanged}
+              onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
+            />
+          );
+        })}
       </div>
 
       <button

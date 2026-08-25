@@ -189,15 +189,21 @@ function SettingsForm({
         </label>
 
         {beatEnabled && (
-          <TextField
-            label="Compare against your best of the last (weeks)"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={52}
-            value={beatLookback}
-            onChange={(e) => setBeatLookback(e.target.value)}
-          />
+          <div>
+            <TextField
+              label="Only compare if trained within (weeks)"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={52}
+              value={beatLookback}
+              onChange={(e) => setBeatLookback(e.target.value)}
+            />
+            <p className="mt-1.5 text-xs text-ink3">
+              Each set is compared to the same set number from the last time you did the exercise. If
+              that was longer ago than this, it’s treated as a fresh start (no comparison).
+            </p>
+          </div>
         )}
       </Section>
 
