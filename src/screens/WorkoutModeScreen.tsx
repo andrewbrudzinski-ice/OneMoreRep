@@ -608,10 +608,10 @@ function SetRow({
   return (
     <div className={`rounded-tile px-1 py-1.5 ${set.is_completed ? 'bg-surface2/50' : ''}`}>
       {/* Line 1 — the core logging controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           onClick={toggleWarmup}
-          className={`h-8 w-8 shrink-0 rounded-control text-xs font-bold ${
+          className={`h-10 w-9 shrink-0 rounded-control text-xs font-bold ${
             set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
           }`}
           title="Toggle warm-up"
@@ -626,7 +626,7 @@ function SetRow({
 
         <button
           onClick={() => onComplete(!set.is_completed)}
-          className={`ml-auto h-9 w-9 shrink-0 rounded-control text-lg font-bold transition-colors ${
+          className={`ml-auto h-10 w-10 shrink-0 rounded-control text-lg font-bold transition-colors ${
             set.is_completed
               ? 'bg-accent text-on-accent'
               : 'bg-surface2 text-ink3 hover:bg-surface3'
@@ -685,7 +685,7 @@ function NumberField({
     <div className="flex items-center rounded-control border border-line bg-surface2">
       <button
         onClick={() => onChange(value - step)}
-        className="h-9 w-7 rounded-l-control text-ink2 hover:bg-surface3"
+        className="h-10 w-9 rounded-l-control text-lg text-ink2 hover:bg-surface3"
         aria-label="Decrease"
       >
         −
@@ -695,12 +695,12 @@ function NumberField({
         inputMode="decimal"
         value={Number.isNaN(value) ? '' : value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-12 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
+        className="w-9 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
         aria-label={suffix ? `Weight in ${suffix}` : 'Reps'}
       />
       <button
         onClick={() => onChange(value + step)}
-        className="h-9 w-7 rounded-r-control text-ink2 hover:bg-surface3"
+        className="h-10 w-9 rounded-r-control text-lg text-ink2 hover:bg-surface3"
         aria-label="Increase"
       >
         +

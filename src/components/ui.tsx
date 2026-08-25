@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -141,7 +142,7 @@ export function Stepper({
       <button
         type="button"
         onClick={() => onChange(clamp(value - 1))}
-        className="h-9 w-9 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
+        className="h-10 w-10 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
         aria-label="Decrease"
       >
         −
@@ -150,7 +151,7 @@ export function Stepper({
       <button
         type="button"
         onClick={() => onChange(clamp(value + 1))}
-        className="h-9 w-9 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
+        className="h-10 w-10 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
         aria-label="Increase"
       >
         +
@@ -170,21 +171,49 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  // Lock background scroll while the modal is open so the page can't
+  // rubber-band/bounce behind it (especially on iOS).
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-panel border border-line bg-surface shadow-raised sm:rounded-panel">
-        <div className="flex items-center justify-between border-b border-hairline px-4 py-3.5">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-panel border border-line bg-surface shadow-raised sm:rounded-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-hairline py-3 pl-4 pr-2">
           <h2 className="text-base font-extrabold text-ink">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-control px-2 py-1 text-ink3 hover:bg-white/[0.05] hover:text-ink"
+            className="-mr-1 flex h-10 w-10 items-center justify-center rounded-control text-ink3 hover:bg-white/[0.05] hover:text-ink"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-        {footer && <div className="border-t border-hairline p-4">{footer}</div>}
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain p-4"
+          style={footer ? undefined : { paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          {children}
+        </div>
+        {footer && (
+          <div
+            className="border-t border-hairline p-4"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

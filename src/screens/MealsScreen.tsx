@@ -171,7 +171,7 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
                 </div>
                 <button
                   onClick={() => changeServings(item.id, Math.round((item.servings - 0.5) * 100) / 100)}
-                  className="h-7 w-7 rounded-control border border-line text-ink2 hover:bg-surface3"
+                  className="h-9 w-9 shrink-0 rounded-control border border-line text-ink2 hover:bg-surface3"
                   aria-label="Fewer servings"
                 >
                   −

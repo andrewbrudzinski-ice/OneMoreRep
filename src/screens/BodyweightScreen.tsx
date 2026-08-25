@@ -180,7 +180,7 @@ export function BodyweightScreen() {
                     </button>
                     <button
                       onClick={() => remove(entry)}
-                      className="h-8 w-8 shrink-0 text-ink4 hover:text-fatigued"
+                      className="-mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-ink4 hover:bg-fatigued/10 hover:text-fatigued"
                       aria-label="Delete weigh-in"
                     >
                       ✕
