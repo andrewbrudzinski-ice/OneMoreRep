@@ -7,7 +7,7 @@ import { useAsync } from '../hooks/useAsync';
 import { formatDuration } from '../hooks/useElapsedSeconds';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
 import type { VsLastTone } from '../lib/workoutSummary';
-import type { Settings } from '../types';
+import type { Settings, WorkoutSet } from '../types';
 
 const TONE_CLASSES: Record<VsLastTone, string> = {
   up: 'text-accent',
@@ -25,16 +25,18 @@ export function WorkoutSummaryScreen() {
   const { workoutId = '' } = useParams();
 
   const state = useAsync(async () => {
-    const [summary, settings] = await Promise.all([
+    const [summary, settings, detail] = await Promise.all([
       repository.getWorkoutSummary(workoutId),
       repository.getSettings(),
+      repository.getWorkoutDetail(workoutId),
     ]);
-    return { summary, settings };
+    return { summary, settings, detail };
   }, [workoutId]);
 
   if (state.loading) return <Spinner />;
   const summary = state.data?.summary;
   const settings = state.data?.settings;
+  const detail = state.data?.detail;
   if (!summary || !settings) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
@@ -120,6 +122,38 @@ export function WorkoutSummaryScreen() {
           )}
         </section>
 
+        {/* Exercise breakdown */}
+        {detail && detail.exercises.length > 0 && (
+          <section className="pt-1">
+            <SectionHeader label="Exercises" />
+            <div className="mt-1 space-y-3">
+              {detail.exercises.map((item) => {
+                const workingSets = item.sets.filter((s) => s.is_completed && !s.is_warmup);
+                const warmupSets = item.sets.filter((s) => s.is_warmup);
+                return (
+                  <Panel key={item.id} className="p-4">
+                    <div className="text-[14px] font-extrabold tracking-[-0.01em] text-ink">
+                      {item.exercise?.name ?? 'Exercise'}
+                    </div>
+                    {workingSets.length === 0 && warmupSets.length === 0 ? (
+                      <p className="mt-2 text-[12px] text-ink3">No sets logged.</p>
+                    ) : (
+                      <div className="mt-2.5 space-y-1">
+                        {warmupSets.map((s) => (
+                          <SetLine key={s.id} set={s} unit={unit} warmup />
+                        ))}
+                        {workingSets.map((s, i) => (
+                          <SetLine key={s.id} set={s} unit={unit} index={i + 1} />
+                        ))}
+                      </div>
+                    )}
+                  </Panel>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Actions */}
         <div className="space-y-2 pt-3">
           <Button variant="primary" className="w-full" onClick={() => navigate('/')}>
@@ -153,6 +187,32 @@ function Stat({ label, value }: { label: string; value: string }) {
         {value}
       </div>
       <div className="mt-1.5 text-[9px] font-bold uppercase tracking-[0.11em] text-ink3">{label}</div>
+    </div>
+  );
+}
+
+function SetLine({
+  set,
+  unit,
+  index,
+  warmup,
+}: {
+  set: WorkoutSet;
+  unit: Settings['units'];
+  index?: number;
+  warmup?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 text-[12.5px]">
+      <span className={`w-5 text-center text-[10px] font-bold ${warmup ? 'text-amber-400' : 'text-ink3'}`}>
+        {warmup ? 'W' : index}
+      </span>
+      <span className="tabular-nums text-ink">
+        {set.weight} {unit} × {set.reps}
+      </span>
+      {set.rpe !== null && (
+        <span className="text-[11px] text-ink3">RPE {set.rpe}</span>
+      )}
     </div>
   );
 }

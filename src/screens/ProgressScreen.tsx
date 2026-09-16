@@ -31,15 +31,16 @@ export function ProgressScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const state = useAsync(async () => {
-    const [prs, exercises, settings, stats, readiness, heatmap] = await Promise.all([
+    const [prs, exercises, settings, stats, readiness, heatmap, history] = await Promise.all([
       repository.getPersonalRecords(),
       repository.getExercises({ includeArchived: true }),
       repository.getSettings(),
       repository.getProgressStats(),
       repository.getReadiness(),
       repository.getMuscleHeatmap(),
+      repository.getWorkoutHistory(),
     ]);
-    return { prs, exercises, settings, stats, readiness, heatmap };
+    return { prs, exercises, settings, stats, readiness, heatmap, history };
   }, []);
 
   const p = useAnimationProgress(state.data);
@@ -57,6 +58,16 @@ export function ProgressScreen() {
       .filter((e): e is Exercise => !!e)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [state.data?.prs, exerciseById]);
+
+  const workoutByPrDate = useMemo(() => {
+    const history = state.data?.history ?? [];
+    const map = new Map<string, string>();
+    for (const entry of history) {
+      const ts = entry.workout.completed_at ?? entry.workout.started_at;
+      map.set(ts.slice(0, 10), entry.workout.name);
+    }
+    return map;
+  }, [state.data?.history]);
 
   if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
   if (state.loading || !state.data) return <Spinner />;
@@ -133,24 +144,30 @@ export function ProgressScreen() {
             <section className="pt-1">
               <SectionHeader label="Recent PRs" />
               <ul className="mt-1">
-                {prs.slice(0, 20).map((pr) => (
-                  <li
-                    key={pr.id}
-                    className="flex items-center justify-between gap-3 border-t border-hairline py-3 first:border-t-0"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-[13.5px] font-semibold text-ink">
-                        {exerciseById.get(pr.exercise_id)?.name ?? 'Exercise'}
+                {prs.slice(0, 20).map((pr) => {
+                  const workoutName = workoutByPrDate.get(pr.achieved_at.slice(0, 10));
+                  return (
+                    <li
+                      key={pr.id}
+                      className="flex items-center justify-between gap-3 border-t border-hairline py-3 first:border-t-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-[13.5px] font-semibold text-ink">
+                          {exerciseById.get(pr.exercise_id)?.name ?? 'Exercise'}
+                        </div>
+                        <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-ink3">
+                          {PR_TYPE_LABELS[pr.pr_type]} · {formatLongDate(pr.achieved_at)}
+                        </div>
+                        {workoutName && (
+                          <div className="mt-0.5 truncate text-[9px] text-ink4">{workoutName}</div>
+                        )}
                       </div>
-                      <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-ink3">
-                        {PR_TYPE_LABELS[pr.pr_type]} · {formatLongDate(pr.achieved_at)}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-[14px] font-extrabold tabular-nums text-accent">
-                      {formatPr(pr, unit)}
-                    </span>
-                  </li>
-                ))}
+                      <span className="shrink-0 text-[14px] font-extrabold tabular-nums text-accent">
+                        {formatPr(pr, unit)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}

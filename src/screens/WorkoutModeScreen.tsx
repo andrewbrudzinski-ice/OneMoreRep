@@ -724,6 +724,7 @@ function NumberField({
         inputMode="decimal"
         value={Number.isNaN(value) ? '' : value}
         onChange={(e) => onChange(Number(e.target.value))}
+        onFocus={(e) => e.target.select()}
         className="w-9 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
         aria-label={suffix ? `Weight in ${suffix}` : 'Reps'}
       />

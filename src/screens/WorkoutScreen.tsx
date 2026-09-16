@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader, PageBody } from '../components/ScreenHeader';
-import { EmptyState, ErrorState, Spinner } from '../components/ui';
+import { EmptyState, ErrorState, Spinner, Modal, Button } from '../components/ui';
 import { ArrowRight, Panel, PrimaryAction, SectionHeader, SectionLabel } from '../components/primitives';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -20,6 +21,9 @@ interface WorkoutTabData {
 export function WorkoutScreen() {
   const repository = useRepository();
   const navigate = useNavigate();
+  const [logPastOpen, setLogPastOpen] = useState(false);
+  const [pastDate, setPastDate] = useState('');
+  const [pastName, setPastName] = useState('');
 
   const state = useAsync<WorkoutTabData>(async () => {
     const [routines, active] = await Promise.all([
@@ -45,6 +49,22 @@ export function WorkoutScreen() {
 
   async function startEmpty() {
     const workout = await repository.startWorkout({ name: 'Empty Workout' });
+    navigate(`/session/${workout.id}`);
+  }
+
+  function openLogPast() {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    setPastDate(yesterday);
+    setPastName('');
+    setLogPastOpen(true);
+  }
+
+  async function startPastWorkout() {
+    const name = pastName.trim() || 'Past Workout';
+    const workout = await repository.startWorkout({ name });
+    await repository.updateWorkoutDate(workout.id, pastDate);
+    await repository.updateWorkout(workout.id, { name });
+    setLogPastOpen(false);
     navigate(`/session/${workout.id}`);
   }
 
@@ -101,6 +121,14 @@ export function WorkoutScreen() {
         {/* Start empty workout — primary CTA */}
         <PrimaryAction onClick={startEmpty} label="Start empty workout" />
 
+        {/* Log a past workout */}
+        <button
+          onClick={openLogPast}
+          className="w-full rounded-control border border-line bg-transparent py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink3 transition-colors hover:border-line-strong hover:text-ink2"
+        >
+          Log past workout
+        </button>
+
         {/* Routines */}
         <section className="pt-1">
           <SectionHeader label="Routines" />
@@ -155,6 +183,44 @@ export function WorkoutScreen() {
           )}
         </section>
       </PageBody>
+
+      {logPastOpen && (
+        <Modal
+          title="Log past workout"
+          onClose={() => setLogPastOpen(false)}
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setLogPastOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={startPastWorkout} disabled={!pastDate}>
+                Start logging
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink3">Date</span>
+              <input
+                type="date"
+                value={pastDate}
+                max={new Date(Date.now() - 86400000).toISOString().slice(0, 10)}
+                onChange={(e) => setPastDate(e.target.value)}
+                className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink3">Name (optional)</span>
+              <input
+                type="text"
+                value={pastName}
+                onChange={(e) => setPastName(e.target.value)}
+                placeholder="Past Workout"
+                className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none placeholder:text-ink4 focus:border-accent"
+              />
+            </label>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
