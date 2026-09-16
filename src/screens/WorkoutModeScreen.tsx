@@ -8,7 +8,7 @@ import { useAsync } from '../hooks/useAsync';
 import { useElapsedSeconds, formatDuration } from '../hooks/useElapsedSeconds';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useRestTimer } from '../hooks/useRestTimer';
-import { evaluateSet, type BeatEvaluation } from '../lib/beatLastTime';
+import { evaluateSet, type BeatEvaluation, type ComparableSet } from '../lib/beatLastTime';
 import type { AutoRegResult } from '../lib/autoRegulation';
 import { filterExercises } from '../lib/exerciseSearch';
 import { titleCase } from '../lib/labels';
@@ -78,6 +78,8 @@ export function WorkoutModeScreen() {
   useEffect(() => {
     if (!state.data) return;
     const { detail, lastByExercise } = state.data;
+    // Don't auto-fill rows when editing a finished session.
+    if (detail.workout.completed_at !== null) return;
     const toSeed = detail.exercises.filter(
       (e) => e.sets.length === 0 && !seededRef.current.has(e.id),
     );
@@ -116,6 +118,9 @@ export function WorkoutModeScreen() {
 
   const { detail, settings, lastByExercise, suggestionByExercise, restByExercise } = state.data;
   const { workout } = detail;
+  // A completed workout opens in edit mode: no timer, no auto-seed, "Done"
+  // recomputes PRs instead of "Finish" closing the session.
+  const editing = workout.completed_at !== null;
 
   async function setIntent(intent: WorkoutIntent) {
     await repository.updateWorkout(workoutId, { intent });
@@ -135,7 +140,8 @@ export function WorkoutModeScreen() {
       setId,
       willComplete ? { is_completed: true, rest_seconds: restDuration } : { is_completed: false },
     );
-    if (willComplete) {
+    // Editing a past session shouldn't kick off a live rest timer.
+    if (willComplete && !editing) {
       rest.start(restDuration);
     }
     state.reload();
@@ -151,19 +157,47 @@ export function WorkoutModeScreen() {
     navigate('/workout');
   }
 
+  // Edit mode: everything is persisted immediately, so "Done" just rebuilds the
+  // PR cache (a lowered/added set can change the record history) and returns.
+  async function doneEditing() {
+    await repository.recomputePersonalRecords();
+    navigate(`/summary/${workoutId}`);
+  }
+
+  async function changeDate(date: string) {
+    if (!date) return;
+    await repository.updateWorkoutDate(workoutId, date);
+    state.reload();
+  }
+
+  async function changeNotes(notes: string) {
+    await repository.updateWorkout(workoutId, { notes });
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 pb-32">
       <SessionHeader
         name={workout.name}
         startedAt={workout.started_at}
+        editing={editing}
         onFinish={() => setFinishing(true)}
+        onDone={doneEditing}
       />
 
       <div className="mx-auto max-w-2xl space-y-4 p-4">
+        {editing && (
+          <EditControls
+            date={(workout.completed_at ?? workout.started_at).slice(0, 10)}
+            notes={workout.notes}
+            onChangeDate={changeDate}
+            onChangeNotes={changeNotes}
+          />
+        )}
+
         <IntentSelector value={workout.intent} onChange={setIntent} />
 
         {detail.exercises.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
+          <div className="rounded-panel border border-dashed border-line p-8 text-center text-sm text-ink2">
             No exercises yet. Add one to start logging.
           </div>
         ) : (
@@ -176,6 +210,7 @@ export function WorkoutModeScreen() {
               rememberedRest={restByExercise.get(item.exercise_id) ?? null}
               settings={settings}
               intent={workout.intent}
+              editing={editing}
               onChanged={() => state.reload()}
               onCompleteSet={onCompleteSet}
             />
@@ -185,13 +220,15 @@ export function WorkoutModeScreen() {
         <Button variant="secondary" className="w-full" onClick={() => setPicking(true)}>
           + Add exercise
         </Button>
+
+        {!editing && <SessionNotes notes={workout.notes} onChangeNotes={changeNotes} />}
       </div>
 
       {rest.active && <RestTimerBar rest={rest} />}
 
       {picking && <ExercisePicker onPick={addExercise} onClose={() => setPicking(false)} />}
 
-      {finishing && (
+      {finishing && !editing && (
         <Modal
           title="Finish workout?"
           onClose={() => setFinishing(false)}
@@ -223,27 +260,110 @@ export function WorkoutModeScreen() {
 function SessionHeader({
   name,
   startedAt,
+  editing,
   onFinish,
+  onDone,
 }: {
   name: string;
   startedAt: string;
+  editing: boolean;
   onFinish: () => void;
+  onDone: () => void;
 }) {
   const elapsed = useElapsedSeconds(startedAt);
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-hairline bg-ground/90 px-4 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-base font-bold">{name}</div>
-          <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
-            <span aria-hidden>⏱</span> {formatDuration(elapsed)}
-          </div>
+          {editing && (
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-accent">
+              Editing workout
+            </div>
+          )}
+          <div className="truncate text-base font-extrabold">{name}</div>
+          {!editing && (
+            <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
+              <span aria-hidden>⏱</span> {formatDuration(elapsed)}
+            </div>
+          )}
         </div>
-        <Button variant="primary" onClick={onFinish}>
-          Finish
-        </Button>
+        {editing ? (
+          <Button variant="primary" onClick={onDone}>
+            Done
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={onFinish}>
+            Finish
+          </Button>
+        )}
       </div>
     </header>
+  );
+}
+
+function EditControls({
+  date,
+  notes,
+  onChangeDate,
+  onChangeNotes,
+}: {
+  date: string;
+  notes: string;
+  onChangeDate: (date: string) => void;
+  onChangeNotes: (notes: string) => void;
+}) {
+  const [noteDraft, setNoteDraft] = useState(notes);
+  return (
+    <div className="space-y-3 rounded-panel border border-line bg-surface p-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-slate-400">Date</span>
+        <input
+          type="date"
+          value={date}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => onChangeDate(e.target.value)}
+          className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-slate-400">Notes</span>
+        <textarea
+          value={noteDraft}
+          rows={2}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          onBlur={() => onChangeNotes(noteDraft.trim())}
+          placeholder="How did it go?"
+          className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent"
+        />
+      </label>
+    </div>
+  );
+}
+
+function SessionNotes({
+  notes,
+  onChangeNotes,
+}: {
+  notes: string;
+  onChangeNotes: (notes: string) => void;
+}) {
+  const [draft, setDraft] = useState(notes);
+  return (
+    <div className="rounded-panel border border-line bg-surface p-4 shadow-panel">
+      <label className="block">
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink3">
+          Session notes
+        </span>
+        <textarea
+          value={draft}
+          rows={2}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => draft.trim() !== notes.trim() && onChangeNotes(draft.trim())}
+          placeholder="How did it go? Anything to remember for next time…"
+          className="w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-sm text-ink outline-none placeholder:text-ink4 focus:border-accent"
+        />
+      </label>
+    </div>
   );
 }
 
@@ -260,10 +380,10 @@ function IntentSelector({
         <button
           key={intent.value}
           onClick={() => onChange(intent.value)}
-          className={`flex-1 rounded-xl border px-2 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 rounded-control border px-2 py-2 text-xs font-semibold transition-colors ${
             value === intent.value
-              ? 'border-beat bg-beat/15 text-beat'
-              : 'border-slate-700 bg-slate-900 text-slate-300'
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-line bg-surface2 text-ink2 hover:text-ink'
           }`}
         >
           {intent.label}
@@ -280,6 +400,7 @@ function ExerciseBlock({
   rememberedRest,
   settings,
   intent,
+  editing,
   onChanged,
   onCompleteSet,
 }: {
@@ -289,6 +410,7 @@ function ExerciseBlock({
   rememberedRest: number | null;
   settings: Settings;
   intent: WorkoutIntent;
+  editing: boolean;
   onChanged: () => void;
   onCompleteSet: (setId: string, willComplete: boolean, exerciseRest: number | null) => void;
 }) {
@@ -296,10 +418,28 @@ function ExerciseBlock({
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  const priorWorking = useMemo(
-    () => (last?.sets ?? []).filter((s) => !s.is_warmup),
-    [last],
-  );
+  // Beat Last Time compares each set, in order, to the SAME set number from the
+  // last time you did this exercise (set 1 vs set 1, set 2 vs set 2, …) — so the
+  // ±weight is for that specific set's counterpart, not a session peak. Only the
+  // most recent session counts, and only if it's within the staleness window.
+  const priorWorking = useMemo(() => {
+    if (!last) return [];
+    const ageMs = Date.now() - new Date(last.workout.completed_at ?? last.workout.started_at).getTime();
+    const withinWindow = ageMs <= settings.beat_lookback_weeks * 7 * 24 * 60 * 60 * 1000;
+    if (!withinWindow) return [];
+    return last.sets
+      .filter((s) => !s.is_warmup)
+      .sort((a, b) => a.set_number - b.set_number)
+      .map((s) => ({ weight: s.weight, reps: s.reps }) as ComparableSet);
+  }, [last, settings.beat_lookback_weeks]);
+
+  // Map each working set's id to its position among the working sets, so a row
+  // can look up its counterpart from last time by index.
+  const workingIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    item.sets.filter((s) => !s.is_warmup).forEach((s, i) => map.set(s.id, i));
+    return map;
+  }, [item.sets]);
 
   const topWeight = useMemo(() => {
     const working = item.sets.filter((s) => !s.is_warmup);
@@ -309,7 +449,13 @@ function ExerciseBlock({
   async function addSet() {
     const working = item.sets.filter((s) => !s.is_warmup);
     const templ = working[working.length - 1];
-    await repository.addSet(item.id, { weight: templ?.weight ?? 0, reps: templ?.reps ?? 0 });
+    const created = await repository.addSet(item.id, {
+      weight: templ?.weight ?? 0,
+      reps: templ?.reps ?? 0,
+    });
+    // In edit mode a new set is part of a finished session, so mark it done —
+    // otherwise it wouldn't count toward volume or PRs.
+    if (editing) await repository.updateSet(created.id, { is_completed: true });
     onChanged();
   }
 
@@ -325,7 +471,7 @@ function ExerciseBlock({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className="rounded-panel border border-line bg-surface p-4 shadow-panel">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
@@ -334,19 +480,19 @@ function ExerciseBlock({
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="h-8 w-8 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+            className="h-8 w-8 rounded-control bg-surface2 text-ink2 hover:bg-surface3"
             aria-label="Exercise menu"
           >
             ⋯
           </button>
           {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-xl">
+            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-tile border border-line bg-surface text-sm shadow-raised">
               <button
                 onClick={() => {
                   setSwapping(true);
                   setMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left hover:bg-slate-800"
+                className="block w-full px-3 py-2 text-left hover:bg-surface2"
               >
                 Swap exercise
               </button>
@@ -355,7 +501,7 @@ function ExerciseBlock({
                   remove();
                   setMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2 text-left text-red-400 hover:bg-slate-800"
+                className="block w-full px-3 py-2 text-left text-fatigued hover:bg-surface2"
               >
                 Remove
               </button>
@@ -365,34 +511,40 @@ function ExerciseBlock({
       </div>
 
       {suggestion?.suggest && suggestion.reason && (
-        <div className="mt-3 rounded-xl border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
+        <div className="mt-3  border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
           💡 {suggestion.reason}
         </div>
       )}
 
       <div className="mt-3 space-y-1.5">
-        {item.sets.map((set) => (
-          <SetRow
-            key={set.id}
-            set={set}
-            unit={settings.units}
-            priorWorking={priorWorking}
-            loadAlwaysGreen={settings.load_always_green}
-            intent={intent}
-            onChanged={onChanged}
-            onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
-          />
-        ))}
+        {item.sets.map((set) => {
+          const workingIndex = workingIndexById.get(set.id);
+          const comparison = workingIndex === undefined ? null : (priorWorking[workingIndex] ?? null);
+          return (
+            <SetRow
+              key={set.id}
+              set={set}
+              unit={settings.units}
+              comparison={comparison}
+              beatEnabled={settings.beat_comparison_enabled}
+              loadAlwaysGreen={settings.load_always_green}
+              intent={intent}
+              onChanged={onChanged}
+              onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
+            />
+          );
+        })}
       </div>
 
       <button
         onClick={addSet}
-        className="mt-2 w-full rounded-lg border border-dashed border-slate-700 py-2 text-sm text-slate-400 hover:border-slate-500"
+        className="mt-2 w-full rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
       >
         + Add set
       </button>
 
-      {topWeight > 0 && (
+      {/* Plate breakdown only makes sense for a plate-loaded barbell. */}
+      {topWeight > 0 && item.exercise?.equipment === 'barbell' && (
         <div className="mt-3">
           <PlateCalculatorPanel weight={topWeight} unit={settings.units} />
         </div>
@@ -423,7 +575,8 @@ function LastTimeRow({ last }: { last: LastSession | undefined }) {
 function SetRow({
   set,
   unit,
-  priorWorking,
+  comparison,
+  beatEnabled,
   loadAlwaysGreen,
   intent,
   onChanged,
@@ -431,7 +584,8 @@ function SetRow({
 }: {
   set: WorkoutSet;
   unit: Settings['units'];
-  priorWorking: WorkoutSet[];
+  comparison: ComparableSet | null;
+  beatEnabled: boolean;
   loadAlwaysGreen: boolean;
   intent: WorkoutIntent;
   onChanged: () => void;
@@ -450,13 +604,9 @@ function SetRow({
   const weightStep = unit === 'kg' ? 2.5 : 5;
 
   const evaluation: BeatEvaluation | null = useMemo(() => {
-    if (set.is_warmup) return null;
-    return evaluateSet(
-      { weight, reps },
-      priorWorking.map((s) => ({ weight: s.weight, reps: s.reps })),
-      { loadAlwaysGreen, intent, unit },
-    );
-  }, [weight, reps, set.is_warmup, priorWorking, loadAlwaysGreen, intent, unit]);
+    if (set.is_warmup || !beatEnabled || !comparison) return null;
+    return evaluateSet({ weight, reps }, [comparison], { loadAlwaysGreen, intent, unit });
+  }, [weight, reps, set.is_warmup, beatEnabled, comparison, loadAlwaysGreen, intent, unit]);
 
   function persist(next: { weight?: number; reps?: number }) {
     void repository.updateSet(set.id, next);
@@ -485,13 +635,13 @@ function SetRow({
   }
 
   return (
-    <div className={`rounded-lg px-1 py-1.5 ${set.is_completed ? 'bg-slate-800/40' : ''}`}>
+    <div className={`rounded-tile px-1 py-1.5 ${set.is_completed ? 'bg-surface2/50' : ''}`}>
       {/* Line 1 — the core logging controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           onClick={toggleWarmup}
-          className={`h-8 w-8 shrink-0 rounded-md text-xs font-bold ${
-            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
+          className={`h-10 w-9 shrink-0 rounded-control text-xs font-bold ${
+            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
           }`}
           title="Toggle warm-up"
           aria-label="Toggle warm-up"
@@ -505,10 +655,10 @@ function SetRow({
 
         <button
           onClick={() => onComplete(!set.is_completed)}
-          className={`ml-auto h-9 w-9 shrink-0 rounded-lg text-lg font-bold ${
+          className={`ml-auto h-10 w-10 shrink-0 rounded-control text-lg font-bold transition-colors ${
             set.is_completed
-              ? 'bg-beat text-onaccent'
-              : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              ? 'bg-accent text-on-accent'
+              : 'bg-surface2 text-ink3 hover:bg-surface3'
           }`}
           aria-label={set.is_completed ? 'Mark incomplete' : 'Complete set'}
         >
@@ -520,12 +670,14 @@ function SetRow({
       <div className="mt-1 flex items-center justify-between pl-10">
         {set.is_warmup ? (
           <span className="text-[11px] font-medium text-amber-400">Warm-up (not counted)</span>
-        ) : (
+        ) : beatEnabled ? (
           <BeatBadge evaluation={evaluation} />
+        ) : (
+          <span />
         )}
         <button
           onClick={remove}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+          className="flex items-center gap-1  px-2 py-1 text-xs text-slate-500 hover:bg-fatigued/10 hover:text-fatigued"
           aria-label="Delete set"
         >
           <svg
@@ -559,10 +711,10 @@ function NumberField({
   suffix?: string;
 }) {
   return (
-    <div className="flex items-center rounded-lg bg-slate-800">
+    <div className="flex items-center rounded-control border border-line bg-surface2">
       <button
         onClick={() => onChange(value - step)}
-        className="h-9 w-7 rounded-l-lg text-slate-300 hover:bg-slate-700"
+        className="h-10 w-9 rounded-l-control text-lg text-ink2 hover:bg-surface3"
         aria-label="Decrease"
       >
         −
@@ -572,12 +724,13 @@ function NumberField({
         inputMode="decimal"
         value={Number.isNaN(value) ? '' : value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-12 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
+        onFocus={(e) => e.target.select()}
+        className="w-9 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
         aria-label={suffix ? `Weight in ${suffix}` : 'Reps'}
       />
       <button
         onClick={() => onChange(value + step)}
-        className="h-9 w-7 rounded-r-lg text-slate-300 hover:bg-slate-700"
+        className="h-10 w-9 rounded-r-control text-lg text-ink2 hover:bg-surface3"
         aria-label="Increase"
       >
         +
@@ -589,9 +742,9 @@ function NumberField({
 function RestTimerBar({ rest }: { rest: ReturnType<typeof useRestTimer> }) {
   const pct = rest.total > 0 ? (rest.remaining / rest.total) * 100 : 0;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
-      <div className="h-1 bg-slate-800">
-        <div className="h-full bg-beat transition-all" style={{ width: `${pct}%` }} />
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur">
+      <div className="h-1 bg-surface2">
+        <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
       </div>
       <div
         className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 py-3"
@@ -619,7 +772,7 @@ function TimerButton({ onClick, children }: { onClick: () => void; children: str
   return (
     <button
       onClick={onClick}
-      className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+      className="rounded-control border border-line bg-surface2 px-3 py-1.5 text-sm text-ink2 hover:bg-surface3"
     >
       {children}
     </button>
@@ -651,15 +804,15 @@ function ExercisePicker({
         {state.loading ? (
           <Spinner />
         ) : (
-          <ul className="max-h-[50vh] divide-y divide-slate-800 overflow-y-auto">
+          <ul className="max-h-[50vh] divide-y divide-hairline overflow-y-auto">
             {results.map((ex) => (
               <li key={ex.id}>
                 <button
                   onClick={() => onPick(ex)}
-                  className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-slate-900"
+                  className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-white/[0.03]"
                 >
-                  <span>{ex.name}</span>
-                  <span className="text-xs text-slate-500">{titleCase(ex.equipment)}</span>
+                  <span className="text-ink">{ex.name}</span>
+                  <span className="text-xs text-ink3">{titleCase(ex.equipment)}</span>
                 </button>
               </li>
             ))}

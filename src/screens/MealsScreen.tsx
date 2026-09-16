@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
+import { Panel } from '../components/primitives';
 import { Button, EmptyState, Modal, Spinner, TextField } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -62,22 +63,21 @@ export function MealsScreen() {
         <Spinner />
       ) : (state.data?.length ?? 0) === 0 ? (
         <EmptyState
-          icon="🍱"
           title="No meals yet"
           note="Group foods you eat together — then quick-add the whole meal to any day."
         />
       ) : (
-        <ul className="space-y-3 p-4">
+        <PageBody>
           {state.data?.map(({ meal, detail }) => (
-            <li key={meal.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <Panel key={meal.id} className="p-4">
               <button className="w-full text-left" onClick={() => setEditingMealId(meal.id)}>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">{meal.name}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="font-semibold text-ink">{meal.name}</span>
+                  <span className="text-xs tabular-nums text-ink2">
                     {detail ? `${formatNumber(Math.round(detail.totals.calories))} cal` : ''}
                   </span>
                 </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className="mt-1 text-sm text-ink2">
                   {detail?.items.length ?? 0} {detail?.items.length === 1 ? 'food' : 'foods'}
                 </div>
               </button>
@@ -89,9 +89,9 @@ export function MealsScreen() {
                   Delete
                 </Button>
               </div>
-            </li>
+            </Panel>
           ))}
-        </ul>
+        </PageBody>
       )}
     </>
   );
@@ -145,7 +145,7 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
           </Button>
         }
       />
-      <div className="space-y-4 p-4">
+      <PageBody className="space-y-4">
         <TextField
           label="Meal name"
           defaultValue={detail.meal.name}
@@ -154,32 +154,32 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
 
         <div className="space-y-2">
           {detail.items.length === 0 ? (
-            <p className="text-sm text-slate-500">No foods yet — add some below.</p>
+            <p className="text-sm text-ink3">No foods yet — add some below.</p>
           ) : (
             detail.items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 p-3"
+                className="flex items-center gap-2 rounded-tile border border-line bg-surface2 p-3"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{item.food?.name ?? 'Deleted food'}</div>
+                  <div className="truncate text-sm text-ink">{item.food?.name ?? 'Deleted food'}</div>
                   {item.food && (
-                    <div className="text-xs text-slate-500 tabular-nums">
+                    <div className="text-xs tabular-nums text-ink3">
                       {formatNumber(Math.round(item.food.calories * item.servings))} cal
                     </div>
                   )}
                 </div>
                 <button
                   onClick={() => changeServings(item.id, Math.round((item.servings - 0.5) * 100) / 100)}
-                  className="h-7 w-7 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="h-9 w-9 shrink-0 rounded-control border border-line text-ink2 hover:bg-surface3"
                   aria-label="Fewer servings"
                 >
                   −
                 </button>
-                <span className="w-8 text-center text-xs tabular-nums">{item.servings}</span>
+                <span className="w-8 text-center text-xs tabular-nums text-ink">{item.servings}</span>
                 <button
                   onClick={() => changeServings(item.id, Math.round((item.servings + 0.5) * 100) / 100)}
-                  className="h-7 w-7 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="h-7 w-7 rounded-control border border-line text-ink2 hover:bg-surface3"
                   aria-label="More servings"
                 >
                   +
@@ -192,7 +192,7 @@ function MealEditor({ mealId, onDone }: { mealId: string; onDone: () => void }) 
         <Button variant="secondary" className="w-full" onClick={() => setPicking(true)}>
           + Add food
         </Button>
-      </div>
+      </PageBody>
 
       {picking && <FoodPicker onPick={addFood} onClose={() => setPicking(false)} />}
     </>
@@ -222,16 +222,16 @@ function FoodPicker({ onPick, onClose }: { onPick: (food: Food) => void; onClose
         {state.loading ? (
           <Spinner />
         ) : foods.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-500">
+          <p className="py-6 text-center text-sm text-ink3">
             No foods yet. Create some in the Foods library first.
           </p>
         ) : (
-          <ul className="max-h-[45vh] divide-y divide-slate-800 overflow-y-auto">
+          <ul className="max-h-[45vh] divide-y divide-hairline overflow-y-auto">
             {foods.map((food) => (
               <li key={food.id}>
                 <button
                   onClick={() => onPick(food)}
-                  className="w-full px-1 py-3 text-left text-sm hover:bg-slate-900"
+                  className="w-full px-1 py-3 text-left text-sm text-ink hover:bg-white/[0.03]"
                 >
                   {food.name}
                 </button>

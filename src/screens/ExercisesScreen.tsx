@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
 import {
   Button,
   Chip,
@@ -76,7 +76,7 @@ export function ExercisesScreen() {
         }
       />
 
-      <div className="space-y-3 p-4">
+      <PageBody className="space-y-3">
         <TextField
           placeholder="Search exercises…"
           value={query}
@@ -96,57 +96,53 @@ export function ExercisesScreen() {
           ))}
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-slate-400">
+        <label className="flex items-center gap-2 text-xs text-ink2">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
-            className="accent-beat"
+            className="accent-accent"
           />
           Show archived
         </label>
-      </div>
 
-      {exercisesState.loading || groupsState.loading ? (
-        <Spinner />
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon="🔍"
-          title="No exercises found"
-          note="Try a different search, or add a custom exercise."
-        />
-      ) : (
-        <ul className="divide-y divide-slate-800 border-t border-slate-800">
-          {visible.map((ex) => (
-            <li key={ex.id}>
-              <button
-                onClick={() => setSelected(ex)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-900"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium">{ex.name}</span>
-                    {ex.is_custom && (
-                      <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
-                        custom
-                      </span>
-                    )}
-                    {ex.is_archived && (
-                      <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500">
-                        archived
-                      </span>
-                    )}
+        {exercisesState.loading || groupsState.loading ? (
+          <Spinner />
+        ) : visible.length === 0 ? (
+          <EmptyState title="No exercises found" note="Try a different search, or add a custom exercise." />
+        ) : (
+          <ul>
+            {visible.map((ex) => (
+              <li key={ex.id} className="border-t border-hairline first:border-t-0">
+                <button
+                  onClick={() => setSelected(ex)}
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-semibold text-ink">{ex.name}</span>
+                      {ex.is_custom && (
+                        <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10px] text-ink3">
+                          custom
+                        </span>
+                      )}
+                      {ex.is_archived && (
+                        <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10px] text-ink4">
+                          archived
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-ink3">
+                      {groupName(ex.primary_muscle_group_id)} · {titleCase(ex.equipment)}
+                    </div>
                   </div>
-                  <div className="mt-0.5 truncate text-xs text-slate-400">
-                    {groupName(ex.primary_muscle_group_id)} · {titleCase(ex.equipment)}
-                  </div>
-                </div>
-                <span className="text-slate-600">›</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                  <span className="text-ink4">›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PageBody>
 
       {selected && (
         <ExerciseDetail
@@ -225,8 +221,8 @@ function ExerciseDetail({
         <Row label="Type" value={exercise.is_compound ? 'Compound' : 'Isolation'} />
         {exercise.instructions && (
           <div>
-            <dt className="text-xs font-medium text-slate-400">Instructions</dt>
-            <dd className="mt-1 whitespace-pre-wrap text-slate-200">{exercise.instructions}</dd>
+            <dt className="text-xs font-medium text-ink3">Instructions</dt>
+            <dd className="mt-1 whitespace-pre-wrap text-ink">{exercise.instructions}</dd>
           </div>
         )}
       </dl>
@@ -237,8 +233,8 @@ function ExerciseDetail({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <dt className="text-xs font-medium text-slate-400">{label}</dt>
-      <dd className="text-right text-slate-200">{value}</dd>
+      <dt className="text-xs font-medium text-ink3">{label}</dt>
+      <dd className="text-right text-ink">{value}</dd>
     </div>
   );
 }
@@ -329,12 +325,12 @@ function ExerciseForm({
             ))}
           </SelectField>
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-300">
+        <label className="flex items-center gap-2 text-sm text-ink2">
           <input
             type="checkbox"
             checked={isCompound}
             onChange={(e) => setIsCompound(e.target.checked)}
-            className="accent-beat"
+            className="accent-accent"
           />
           Compound movement
         </label>

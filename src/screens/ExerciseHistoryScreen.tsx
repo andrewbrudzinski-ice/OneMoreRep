@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
+import { Panel, SectionHeader } from '../components/primitives';
 import { Button, EmptyState, Spinner } from '../components/ui';
 import { TrendChart, type TrendPoint } from '../components/TrendChart';
 import { useRepository } from '../repository/repositoryContext';
@@ -74,13 +75,12 @@ export function ExerciseHistoryScreen() {
 
       {history.sessions.length === 0 ? (
         <EmptyState
-          icon="📈"
           title="No history yet"
           note="Log this exercise in a workout and your trends will appear here."
         />
       ) : (
-        <div className="space-y-5 p-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <PageBody className="space-y-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             <Best label="Best est. 1RM" value={`${formatDecimal(history.bestE1rm)} ${unit}`} />
             <Best label="Heaviest" value={`${formatNumber(history.bestWeight)} ${unit}`} />
             <Best label="Most reps" value={`${history.bestReps}`} />
@@ -89,14 +89,16 @@ export function ExerciseHistoryScreen() {
             <Best label="Lifetime vol." value={`${formatNumber(history.lifetimeVolume)} ${unit}`} />
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <Panel className="p-4">
             <div className="mb-3 flex gap-2">
               {METRICS.map((m) => (
                 <button
                   key={m.key}
                   onClick={() => setMetric(m.key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                    metric === m.key ? 'bg-beat text-onaccent' : 'bg-slate-800 text-slate-300'
+                  className={`rounded-control px-3 py-1.5 text-xs font-bold transition-colors ${
+                    metric === m.key
+                      ? 'bg-accent text-on-accent'
+                      : 'border border-line bg-surface2 text-ink2 hover:text-ink'
                   }`}
                 >
                   {m.label}
@@ -104,21 +106,21 @@ export function ExerciseHistoryScreen() {
               ))}
             </div>
             <TrendChart data={series} unit={unit} />
-          </div>
+          </Panel>
 
-          <div>
-            <h2 className="mb-2 text-sm font-semibold text-slate-300">Sessions</h2>
-            <ul className="space-y-2">
+          <section>
+            <SectionHeader label="Sessions" />
+            <ul className="mt-3 space-y-2">
               {history.sessions.map((session) => (
                 <li
                   key={session.workout.id}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+                  className="rounded-panel border border-line bg-surface p-4 shadow-panel"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-semibold text-ink">
                       {formatLongDate(session.workout.completed_at ?? session.workout.started_at)}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs tabular-nums text-ink3">
                       {formatNumber(session.volume)} {unit} · e1RM {formatDecimal(session.bestE1rm)}
                     </span>
                   </div>
@@ -128,7 +130,7 @@ export function ExerciseHistoryScreen() {
                       .map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-md bg-slate-800 px-2 py-1 text-xs tabular-nums text-slate-200"
+                          className="rounded-control border border-hairline bg-surface2 px-2 py-1 text-xs tabular-nums text-ink"
                         >
                           {s.weight}×{s.reps}
                         </span>
@@ -137,8 +139,8 @@ export function ExerciseHistoryScreen() {
                 </li>
               ))}
             </ul>
-          </div>
-        </div>
+          </section>
+        </PageBody>
       )}
     </>
   );
@@ -146,9 +148,9 @@ export function ExerciseHistoryScreen() {
 
 function Best({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
-      <div className="text-sm font-bold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-[11px] text-slate-400">{label}</div>
+    <div className="rounded-tile border border-hairline bg-surface2 px-3 py-2.5">
+      <div className="text-[15px] font-extrabold tabular-nums text-ink">{value}</div>
+      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.11em] text-ink3">{label}</div>
     </div>
   );
 }

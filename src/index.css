@@ -33,21 +33,27 @@
 :root.dark {
   color-scheme: dark;
 
-  /* Dark palette (normal slate scale). */
-  --s-50: 248 250 252;
-  --s-100: 241 245 249;
-  --s-200: 226 232 240;
-  --s-300: 203 213 225;
-  --s-400: 148 163 184;
-  --s-500: 100 116 139;
-  --s-600: 71 85 105;
-  --s-700: 51 65 85;
-  --s-800: 30 41 59;
-  --s-900: 15 23 42;
-  --s-950: 2 6 23;
+  /*
+   * Dark palette — a performance-dashboard system on a deep navy-black ground
+   * with layered surfaces and an electric-lime accent. The slate scale is
+   * remapped so legacy `slate-*` classes recolor onto the new ramp with no
+   * per-component change; rebuilt screens use the exact named tokens in
+   * tailwind.config.js (surface / surface2 / surface3, hairline/line borders).
+   */
+  --s-50: 246 248 250; /* #F6F8FA — brightest ink */
+  --s-100: 237 241 245; /* #EDF1F5 — primary ink */
+  --s-200: 209 216 223;
+  --s-300: 165 174 184;
+  --s-400: 143 153 163; /* #8F99A3 — secondary ink */
+  --s-500: 106 116 127; /* #6A747F — tertiary ink */
+  --s-600: 74 82 91; /* #4A525B — faintest ink */
+  --s-700: 42 49 58; /* control border */
+  --s-800: 26 31 39; /* #1A1F27 — surface 2 / inset tracks */
+  --s-900: 18 22 29; /* #12161D — panel surface */
+  --s-950: 10 13 18; /* #0A0D12 — page ground */
 
-  --accent: 34 197 94; /* green-500 */
-  --on-accent: 2 6 23; /* near-black text on the bright green */
+  --accent: 143 232 30; /* #8FE81E — electric lime */
+  --on-accent: 11 14 19; /* near-black text on the lime accent */
 }
 
 html,
@@ -58,6 +64,8 @@ body,
 
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
+  font-family:
+    'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   /* Respect notches / safe areas on installed mobile PWA. */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
   -webkit-tap-highlight-color: transparent;
@@ -69,11 +77,11 @@ html {
   overscroll-behavior-y: none;
 }
 
-/* Restrained screen-enter transition. */
+/* Screen-enter transition — fades and lifts each screen on route change. */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -83,6 +91,6 @@ html {
 
 @media (prefers-reduced-motion: no-preference) {
   .screen-enter {
-    animation: fadeInUp 160ms ease-out;
+    animation: fadeInUp 340ms cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 }

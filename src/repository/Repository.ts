@@ -86,8 +86,16 @@ export interface Repository {
   getWorkout(id: string): Promise<Workout | undefined>;
   getWorkoutDetail(id: string): Promise<WorkoutDetail | undefined>;
   updateWorkout(id: string, patch: WorkoutPatch): Promise<Workout>;
+  /** Move a workout to a different calendar date (edits completed_at/started_at,
+   * preserving each timestamp's time-of-day). Call `recomputePersonalRecords`
+   * afterwards if a completed workout's date changed, since PR chronology moves. */
+  updateWorkoutDate(id: string, date: DateString): Promise<Workout>;
   /** Close the session: stamp completed_at + duration_seconds. */
   completeWorkout(id: string): Promise<Workout>;
+  /** Rebuild the personal-records cache by replaying every completed workout in
+   * chronological order. Used after editing a past workout, where a lowered or
+   * added set can change what counted as a PR (and when). */
+  recomputePersonalRecords(): Promise<void>;
   /** Abandon and delete an in-progress session (and its children). */
   cancelWorkout(id: string): Promise<void>;
 
@@ -111,6 +119,14 @@ export interface Repository {
     options?: { excludeWorkoutId?: string },
   ): Promise<LastSession | undefined>;
 
+  /** The single strongest working set (by Epley e1RM) for an exercise across
+   * all completed sessions within the last `withinWeeks` weeks — the baseline
+   * the Beat Last Time badge is compared against. */
+  getRecentBest(
+    exerciseId: string,
+    options: { withinWeeks: number; excludeWorkoutId?: string },
+  ): Promise<RecentBest | undefined>;
+
   // --- History, PRs & summary ----------------------------------------------
   /** Cached personal records, newest first. Optionally filtered by exercise. */
   getPersonalRecords(options?: { exerciseId?: string }): Promise<PersonalRecord[]>;
@@ -118,6 +134,11 @@ export interface Repository {
   getExerciseHistory(exerciseId: string): Promise<ExerciseHistory | undefined>;
   /** Post-completion summary: counts, volume, vs-last, and new PRs. */
   getWorkoutSummary(workoutId: string): Promise<WorkoutSummaryData | undefined>;
+  /** Completed workouts, newest first, with lightweight per-session stats for
+   * the workout-history list. */
+  getWorkoutHistory(): Promise<WorkoutHistoryEntry[]>;
+  /** This week's local training stats (leaderboard foundation, no network). */
+  getWeeklyStats(): Promise<WeeklyStats>;
 
   // --- Nutrition: foods ----------------------------------------------------
   getFoods(): Promise<Food[]>;
@@ -270,6 +291,14 @@ export interface LastSession {
   sets: WorkoutSet[];
 }
 
+/** The strongest working set for an exercise within a recent-weeks window. */
+export interface RecentBest {
+  weight: number;
+  reps: number;
+  /** ISO timestamp of the session that set belongs to. */
+  date: string;
+}
+
 /** One completed session in an exercise's history. */
 export interface ExerciseHistorySession {
   workout: Workout;
@@ -293,6 +322,33 @@ export interface ExerciseHistory {
   bestSetVolume: number;
   bestWorkoutVolume: number;
   lifetimeVolume: number;
+}
+
+/**
+ * This week's training stats, computed entirely from local data. The
+ * backend-free foundation for the future friends leaderboard (see
+ * docs/leaderboard-plan.md) — the social layer will wrap these numbers with a
+ * display name / group before publishing; nothing here touches the network.
+ */
+export interface WeeklyStats {
+  /** Monday (ISO week start) of the current week, "YYYY-MM-DD". */
+  weekStart: DateString;
+  /** Working volume (Σ weight × reps of completed working sets) since Monday. */
+  weekVolume: number;
+  /** Distinct calendar days trained since Monday. */
+  daysTrained: number;
+  /** Current consecutive-day training streak (all-time). */
+  streak: number;
+  /** All-time completed workouts. */
+  totalWorkouts: number;
+}
+
+/** One completed session in the workout-history list. */
+export interface WorkoutHistoryEntry {
+  workout: Workout;
+  exerciseCount: number;
+  workingSetCount: number;
+  volume: number;
 }
 
 /** Everything the post-workout summary screen needs. */

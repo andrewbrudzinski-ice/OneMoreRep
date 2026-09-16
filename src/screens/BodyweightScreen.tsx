@@ -9,7 +9,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
+import { Panel, SectionHeader } from '../components/primitives';
 import { Button, EmptyState, Modal, Spinner, TextField } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
@@ -84,13 +85,12 @@ export function BodyweightScreen() {
 
       {entries.length === 0 ? (
         <EmptyState
-          icon="⚖️"
           title="No weigh-ins yet"
           note="Add your weight to see a trend line smoothed by a 7-day rolling average."
         />
       ) : (
-        <div className="space-y-5 p-4">
-          <div className="grid grid-cols-3 gap-3">
+        <PageBody className="space-y-5">
+          <div className="grid grid-cols-3 gap-2.5">
             <Stat label="Current" value={fmt(stats.current, unit)} />
             <Stat label="Change" value={fmtDelta(stats.change, unit)} />
             <Stat label="7-day avg" value={fmt(stats.avg7, unit)} />
@@ -99,24 +99,24 @@ export function BodyweightScreen() {
             <Stat label="Low" value={fmt(stats.low, unit)} />
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-            <div className="mb-2 flex flex-wrap gap-3 text-xs text-slate-400">
+          <Panel className="p-4">
+            <div className="mb-2 flex flex-wrap gap-3 text-xs text-ink2">
               <Legend color="#334155" label="Raw" />
-              <Legend color="#22c55e" label="7-day avg" />
+              <Legend color="#8FE81E" label="7-day avg" />
               <Legend color="#38bdf8" label="30-day avg" />
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{ top: 8, right: 8, left: -12 }}>
-                <CartesianGrid stroke="#1e293b" vertical={false} />
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: '#64748b', fontSize: 11 }}
+                  tick={{ fill: '#6C7681', fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
                   minTickGap={24}
                 />
                 <YAxis
-                  tick={{ fill: '#64748b', fontSize: 11 }}
+                  tick={{ fill: '#6C7681', fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
                   width={40}
@@ -124,12 +124,12 @@ export function BodyweightScreen() {
                 />
                 <Tooltip
                   contentStyle={{
-                    background: '#0f172a',
-                    border: '1px solid #1e293b',
-                    borderRadius: 12,
-                    color: '#e2e8f0',
+                    background: '#12161D',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    borderRadius: 10,
+                    color: '#F0F3F7',
                   }}
-                  labelStyle={{ color: '#94a3b8' }}
+                  labelStyle={{ color: '#9BA5B0' }}
                 />
                 <Line
                   type="monotone"
@@ -142,7 +142,7 @@ export function BodyweightScreen() {
                 <Line
                   type="monotone"
                   dataKey="avg7"
-                  stroke="#22c55e"
+                  stroke="#8FE81E"
                   strokeWidth={2.5}
                   dot={false}
                   isAnimationActive={false}
@@ -158,34 +158,39 @@ export function BodyweightScreen() {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Panel>
 
-          <div>
-            <h2 className="mb-2 text-sm font-semibold text-slate-300">Weigh-ins</h2>
-            <ul className="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
-              {reversed.map((entry) => (
-                <li key={entry.id} className="flex items-center gap-3 px-4 py-3">
-                  <button className="min-w-0 flex-1 text-left" onClick={() => setEditing(entry)}>
-                    <div className="text-sm font-medium tabular-nums">
-                      {formatDecimal(entry.weight)} {unit}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {formatLongDate(entry.date)}
-                      {entry.note ? ` · ${entry.note}` : ''}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => remove(entry)}
-                    className="h-8 w-8 shrink-0 text-slate-600 hover:text-red-400"
-                    aria-label="Delete weigh-in"
+          <section>
+            <SectionHeader label="Weigh-ins" />
+            <Panel className="mt-3 overflow-hidden p-0">
+              <ul>
+                {reversed.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex items-center gap-3 border-t border-hairline px-4 py-3 first:border-t-0"
                   >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+                    <button className="min-w-0 flex-1 text-left" onClick={() => setEditing(entry)}>
+                      <div className="text-sm font-semibold tabular-nums text-ink">
+                        {formatDecimal(entry.weight)} {unit}
+                      </div>
+                      <div className="mt-0.5 text-xs text-ink3">
+                        {formatLongDate(entry.date)}
+                        {entry.note ? ` · ${entry.note}` : ''}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => remove(entry)}
+                      className="-mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-ink4 hover:bg-fatigued/10 hover:text-fatigued"
+                      aria-label="Delete weigh-in"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          </section>
+        </PageBody>
       )}
 
       {(adding || editing) && (
@@ -214,9 +219,9 @@ function fmtDelta(value: number | null, unit: string): string {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
-      <div className="text-sm font-bold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-[11px] text-slate-400">{label}</div>
+    <div className="rounded-tile border border-hairline bg-surface2 px-3 py-2.5">
+      <div className="text-[15px] font-extrabold tabular-nums text-ink">{value}</div>
+      <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.11em] text-ink3">{label}</div>
     </div>
   );
 }
@@ -224,7 +229,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Legend({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="inline-block h-2 w-4 rounded-full" style={{ background: color }} />
+      <span className="inline-block h-2 w-4 rounded-sm" style={{ background: color }} />
       {label}
     </span>
   );

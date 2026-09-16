@@ -1,12 +1,14 @@
+import { useEffect } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-beat text-onaccent hover:bg-green-400 font-semibold',
-  secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
-  ghost: 'bg-transparent text-slate-300 hover:bg-slate-800',
-  danger: 'bg-transparent text-red-400 hover:bg-red-500/10',
+  primary:
+    'bg-accent text-on-accent hover:bg-accent-hover active:translate-y-px active:bg-accent-press font-extrabold',
+  secondary: 'border border-line bg-surface3 text-ink hover:border-line-strong active:translate-y-px',
+  ghost: 'text-ink2 hover:bg-white/[0.05] hover:text-ink',
+  danger: 'text-fatigued hover:bg-fatigued/10',
 };
 
 export function Button({
@@ -17,7 +19,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm transition-colors disabled:opacity-40 ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-control px-4 py-2.5 text-sm transition-[background-color,border-color,transform] duration-150 disabled:opacity-40 ${variantClasses[variant]} ${className}`}
       {...rest}
     >
       {children}
@@ -32,9 +34,13 @@ export function TextField({
 }: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
   return (
     <label className="block">
-      {label && <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>}
+      {label && (
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-ink3">
+          {label}
+        </span>
+      )}
       <input
-        className={`w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-beat ${className}`}
+        className={`w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none transition-colors placeholder:text-ink4 focus:border-accent ${className}`}
         {...rest}
       />
     </label>
@@ -48,9 +54,13 @@ export function TextAreaField({
 }: TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }) {
   return (
     <label className="block">
-      {label && <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>}
+      {label && (
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-ink3">
+          {label}
+        </span>
+      )}
       <textarea
-        className={`w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-beat ${className}`}
+        className={`w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none transition-colors placeholder:text-ink4 focus:border-accent ${className}`}
         rows={3}
         {...rest}
       />
@@ -73,11 +83,15 @@ export function SelectField({
 }) {
   return (
     <label className="block">
-      {label && <span className="mb-1 block text-xs font-medium text-slate-400">{label}</span>}
+      {label && (
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-ink3">
+          {label}
+        </span>
+      )}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none focus:border-beat ${className}`}
+        className={`w-full rounded-control border border-line bg-surface2 px-3 py-2.5 text-ink outline-none transition-colors focus:border-accent ${className}`}
       >
         {children}
       </select>
@@ -97,10 +111,10 @@ export function Chip({
   return (
     <button
       onClick={onClick}
-      className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+      className={`whitespace-nowrap rounded-control border px-3 py-1.5 text-xs font-semibold transition-colors ${
         active
-          ? 'border-beat bg-beat/15 text-beat'
-          : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'
+          ? 'border-accent bg-accent-soft text-accent'
+          : 'border-line bg-surface2 text-ink2 hover:border-line-strong hover:text-ink'
       }`}
     >
       {children}
@@ -128,7 +142,7 @@ export function Stepper({
       <button
         type="button"
         onClick={() => onChange(clamp(value - 1))}
-        className="h-9 w-9 rounded-lg bg-slate-800 text-lg text-slate-200 hover:bg-slate-700"
+        className="h-10 w-10 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
         aria-label="Decrease"
       >
         −
@@ -137,7 +151,7 @@ export function Stepper({
       <button
         type="button"
         onClick={() => onChange(clamp(value + 1))}
-        className="h-9 w-9 rounded-lg bg-slate-800 text-lg text-slate-200 hover:bg-slate-700"
+        className="h-10 w-10 rounded-control border border-line bg-surface2 text-lg text-ink2 hover:border-line-strong hover:text-ink"
         aria-label="Increase"
       >
         +
@@ -157,21 +171,49 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  // Lock background scroll while the modal is open so the page can't
+  // rubber-band/bounce behind it (especially on iOS).
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-800 bg-slate-950 sm:rounded-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-panel border border-line bg-surface shadow-raised sm:rounded-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-hairline py-3 pl-4 pr-2">
+          <h2 className="text-base font-extrabold text-ink">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="-mr-1 flex h-10 w-10 items-center justify-center rounded-control text-ink3 hover:bg-white/[0.05] hover:text-ink"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-        {footer && <div className="border-t border-slate-800 p-4">{footer}</div>}
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain p-4"
+          style={footer ? undefined : { paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          {children}
+        </div>
+        {footer && (
+          <div
+            className="border-t border-hairline p-4"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -180,17 +222,16 @@ export function Modal({
 export function Spinner() {
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="animate-pulse text-slate-500">Loading…</div>
+      <div className="animate-pulse text-ink3">Loading…</div>
     </div>
   );
 }
 
-export function EmptyState({ icon, title, note }: { icon: string; title: string; note?: string }) {
+export function EmptyState({ title, note }: { icon?: string; title: string; note?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-      <div className="text-4xl">{icon}</div>
-      <p className="font-medium text-slate-200">{title}</p>
-      {note && <p className="max-w-xs text-sm text-slate-400">{note}</p>}
+      <p className="font-extrabold text-ink">{title}</p>
+      {note && <p className="max-w-xs text-sm text-ink2">{note}</p>}
     </div>
   );
 }
@@ -198,9 +239,8 @@ export function EmptyState({ icon, title, note }: { icon: string; title: string;
 export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-      <div className="text-4xl">⚠️</div>
-      <p className="font-medium text-red-400">Something went wrong</p>
-      <p className="max-w-xs text-sm text-slate-400">{error.message}</p>
+      <p className="font-extrabold text-fatigued">Something went wrong</p>
+      <p className="max-w-xs text-sm text-ink2">{error.message}</p>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry}>
           Try again

@@ -35,6 +35,7 @@ import type {
   FoodEntryPatch,
   FoodEntryWithFood,
   LastSession,
+  RecentBest,
   MealDetail,
   MealItemWithFood,
   NewBodyWeightInput,
@@ -55,14 +56,16 @@ import type {
   WorkoutExerciseWithSets,
   WorkoutPatch,
   WorkoutSummaryData,
+  WorkoutHistoryEntry,
+  WeeklyStats,
 } from './Repository';
-import { bestE1RM, workingVolume } from '../lib/beatLastTime';
+import { bestE1RM, epley1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
 import { summarizeVsLast } from '../lib/workoutSummary';
 import { sumEntries, type MacroTotals, ZERO_MACROS } from '../lib/nutrition';
 import { averageWithinDays } from '../lib/rollingAverage';
 import { countInLastDays, currentStreak, longestStreak } from '../lib/streak';
-import { addDays, dayDiff } from '../lib/dates';
+import { addDays, dayDiff, startOfWeek } from '../lib/dates';
 import { todayDateString } from '../lib/id';
 import { computeReadiness, type ReadinessResult } from '../lib/readiness';
 import { aggregateMuscleVolume, normalizeIntensities } from '../lib/muscleVolume';
@@ -112,7 +115,13 @@ export class IndexedDBRepository implements Repository {
     if (!settings) {
       throw new Error('Settings not found — did seed() run?');
     }
-    return settings;
+    // Backfill fields added after this row may have been created, so existing
+    // installs get sane defaults without a schema migration.
+    return {
+      ...settings,
+      beat_comparison_enabled: settings.beat_comparison_enabled ?? true,
+      beat_lookback_weeks: settings.beat_lookback_weeks ?? 3,
+    };
   }
 
   async updateSettings(patch: Partial<Omit<Settings, keyof BaseFields>>): Promise<Settings> {
@@ -468,6 +477,21 @@ export class IndexedDBRepository implements Repository {
     return next;
   }
 
+  async updateWorkoutDate(id: string, date: DateString): Promise<Workout> {
+    const current = await this.db.workouts.get(id);
+    if (!current) throw new Error(`Workout ${id} not found`);
+    // Keep each timestamp's time-of-day; only move the calendar date, which is
+    // what day-bucketing (streaks, weekly volume, PR chronology) reads.
+    const next: Workout = {
+      ...current,
+      started_at: `${date}${current.started_at.slice(10)}`,
+      completed_at: current.completed_at ? `${date}${current.completed_at.slice(10)}` : null,
+      updated_at: nowISO(),
+    };
+    await this.db.workouts.put(next);
+    return next;
+  }
+
   async completeWorkout(id: string): Promise<Workout> {
     const current = await this.db.workouts.get(id);
     if (!current) throw new Error(`Workout ${id} not found`);
@@ -542,6 +566,19 @@ export class IndexedDBRepository implements Repository {
 
     if (newRecords.length > 0) {
       await this.db.personal_records.bulkAdd(newRecords);
+    }
+  }
+
+  async recomputePersonalRecords(): Promise<void> {
+    // PRs are historical ("best at the time achieved"), so editing one past
+    // session can change what counted as a record and when. Rebuild the whole
+    // cache by wiping it and replaying every completed workout in order.
+    const completed = (await this.db.workouts.toArray())
+      .filter((w): w is Workout & { completed_at: string } => w.completed_at !== null)
+      .sort((a, b) => a.completed_at.localeCompare(b.completed_at));
+    await this.db.personal_records.clear();
+    for (const w of completed) {
+      await this.detectAndSaveWorkoutPRs(w.id, w.completed_at);
     }
   }
 
@@ -813,6 +850,57 @@ export class IndexedDBRepository implements Repository {
     };
   }
 
+  async getWorkoutHistory(): Promise<WorkoutHistoryEntry[]> {
+    const completed = (await this.db.workouts.toArray())
+      .filter((w) => w.completed_at !== null)
+      .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''));
+
+    const entries: WorkoutHistoryEntry[] = [];
+    for (const workout of completed) {
+      const wex = await this.db.workout_exercises.where('workout_id').equals(workout.id).toArray();
+      let workingSetCount = 0;
+      let volume = 0;
+      for (const row of wex) {
+        const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+        for (const s of sets) {
+          if (!s.is_warmup && s.is_completed) {
+            workingSetCount += 1;
+            volume += s.weight * s.reps;
+          }
+        }
+      }
+      entries.push({ workout, exerciseCount: wex.length, workingSetCount, volume });
+    }
+    return entries;
+  }
+
+  async getWeeklyStats(): Promise<WeeklyStats> {
+    const today = todayDateString();
+    const weekStart = startOfWeek(today);
+    const completed = (await this.db.workouts.toArray()).filter((w) => w.completed_at !== null);
+    const workoutDays = completed
+      .map((w) => (w.completed_at ?? '').slice(0, 10))
+      .filter((d): d is string => !!d);
+
+    // This calendar week (Monday → today): distinct training days + volume.
+    const daysThisWeek = new Set<string>();
+    let weekVolume = 0;
+    for (const w of completed) {
+      const day = (w.completed_at ?? '').slice(0, 10);
+      if (!day || day < weekStart) continue; // ISO date strings compare correctly
+      daysThisWeek.add(day);
+      weekVolume += await this.computeWorkoutVolume(w.id);
+    }
+
+    return {
+      weekStart,
+      weekVolume,
+      daysTrained: daysThisWeek.size,
+      streak: currentStreak(workoutDays, today),
+      totalWorkouts: completed.length,
+    };
+  }
+
   /** Total completed working-set volume for a workout. */
   private async computeWorkoutVolume(workoutId: string): Promise<number> {
     const wex = await this.db.workout_exercises.where('workout_id').equals(workoutId).toArray();
@@ -854,6 +942,43 @@ export class IndexedDBRepository implements Repository {
     }
     sets.sort((a, b) => a.set_number - b.set_number);
     return { workout: lastWorkout, sets };
+  }
+
+  async getRecentBest(
+    exerciseId: string,
+    options: { withinWeeks: number; excludeWorkoutId?: string },
+  ): Promise<RecentBest | undefined> {
+    const rows = await this.db.workout_exercises.where('exercise_id').equals(exerciseId).toArray();
+    if (rows.length === 0) return undefined;
+
+    const workoutIds = [...new Set(rows.map((r) => r.workout_id))];
+    const workouts = await this.db.workouts.bulkGet(workoutIds);
+    const cutoff = Date.now() - options.withinWeeks * 7 * 24 * 60 * 60 * 1000;
+    const eligible = new Map(
+      workouts
+        .filter((w): w is Workout => !!w && w.completed_at !== null)
+        .filter((w) => w.id !== options.excludeWorkoutId)
+        .filter((w) => new Date(w.completed_at ?? w.started_at).getTime() >= cutoff)
+        .map((w) => [w.id, w]),
+    );
+    if (eligible.size === 0) return undefined;
+
+    let best: RecentBest | undefined;
+    let bestE1rm = 0;
+    for (const row of rows) {
+      const workout = eligible.get(row.workout_id);
+      if (!workout) continue;
+      const rowSets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+      for (const s of rowSets) {
+        if (s.is_warmup || !s.is_completed) continue;
+        const e1rm = epley1RM(s.weight, s.reps);
+        if (e1rm > bestE1rm) {
+          bestE1rm = e1rm;
+          best = { weight: s.weight, reps: s.reps, date: workout.completed_at ?? workout.started_at };
+        }
+      }
+    }
+    return best;
   }
 
   // --- Nutrition: foods ------------------------------------------------------

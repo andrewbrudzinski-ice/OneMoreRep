@@ -1,8 +1,10 @@
 name: CI
 
+# Runs on the repo's default branch (currently claude/new-session-0zts34) and
+# on every PR. `main` is kept for when the default branch is renamed.
 on:
   push:
-    branches: [main]
+    branches: [main, claude/new-session-0zts34]
   pull_request:
 
 # Cancel superseded runs on the same ref.

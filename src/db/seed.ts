@@ -30,6 +30,8 @@ const DEFAULT_SETTINGS: Omit<Settings, 'created_at' | 'updated_at'> = {
   theme: 'dark',
   goal: 'general',
   load_always_green: true,
+  beat_comparison_enabled: true,
+  beat_lookback_weeks: 3,
   starter_routines_seeded: false,
 };
 

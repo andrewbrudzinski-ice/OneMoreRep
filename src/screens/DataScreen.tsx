@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader, PageBody } from '../components/ScreenHeader';
+import { Panel } from '../components/primitives';
 import { Button, Modal } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { STORE_NAMES } from '../db/database';
@@ -80,22 +81,22 @@ export function DataScreen() {
         }
       />
 
-      <div className="space-y-4 p-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-          <h2 className="font-semibold">Export</h2>
-          <p className="mt-1 text-sm text-slate-400">
+      <PageBody className="space-y-4">
+        <Panel className="p-4">
+          <h2 className="font-semibold text-ink">Export</h2>
+          <p className="mt-1 text-sm text-ink2">
             Download your entire database as a JSON file. This is your only backup on a local-first
             app — do it before anything risky, or to move to another device.
           </p>
           <Button variant="primary" className="mt-3" onClick={handleExport} disabled={busy}>
             Download backup
           </Button>
-        </div>
+        </Panel>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-          <h2 className="font-semibold">Import</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Restore from a backup file. This <span className="font-semibold text-slate-200">replaces
+        <Panel className="p-4">
+          <h2 className="font-semibold text-ink">Import</h2>
+          <p className="mt-1 text-sm text-ink2">
+            Restore from a backup file. This <span className="font-semibold text-ink">replaces
             all current data</span> with the file's contents.
           </p>
           <input
@@ -113,19 +114,19 @@ export function DataScreen() {
           >
             Choose backup file…
           </Button>
-        </div>
+        </Panel>
 
         {message && (
-          <p className="rounded-xl border border-beat/30 bg-beat/5 px-4 py-3 text-sm text-beat">
+          <p className="rounded-tile border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent">
             {message}
           </p>
         )}
         {error && (
-          <p className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+          <p className="rounded-tile border border-fatigued/30 bg-fatigued/5 px-4 py-3 text-sm text-fatigued">
             {error}
           </p>
         )}
-      </div>
+      </PageBody>
 
       {pending && (
         <Modal
@@ -142,8 +143,8 @@ export function DataScreen() {
             </div>
           }
         >
-          <p className="text-sm text-slate-300">
-            This backup contains <span className="font-semibold">{countRows(pending)}</span> records
+          <p className="text-sm text-ink2">
+            This backup contains <span className="font-semibold text-ink">{countRows(pending)}</span> records
             {pending.exported_at ? `, exported ${new Date(pending.exported_at).toLocaleString()}` : ''}.
             Importing will permanently replace everything currently in the app.
           </p>

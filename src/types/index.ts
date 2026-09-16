@@ -51,6 +51,10 @@ export interface Settings extends BaseRecord {
   goal: Goal;
   /** When true, heavier weight (≥1 rep) always reads green. Default true. */
   load_always_green: boolean;
+  /** When true, the Beat Last Time badge is shown while logging. Default true. */
+  beat_comparison_enabled: boolean;
+  /** Compare each set against your best set over this many recent weeks. Default 3. */
+  beat_lookback_weeks: number;
   /** Internal: set once the starter routine templates have been seeded. */
   starter_routines_seeded?: boolean;
 }
