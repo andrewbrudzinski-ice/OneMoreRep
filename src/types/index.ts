@@ -81,7 +81,7 @@ export type Equipment =
   | 'band'
   | 'other';
 
-export type MovementType = 'push' | 'pull' | 'squat' | 'hinge' | 'carry' | 'core' | 'isolation';
+export type MovementType = 'push' | 'pull' | 'squat' | 'hinge' | 'carry' | 'core' | 'isolation' | 'cardio';
 
 export interface Exercise extends BaseRecord {
   name: string;

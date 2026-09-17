@@ -48,11 +48,11 @@ function clamp(n: number, lo: number, hi: number): number {
 /** Fatigue points for a consecutive-training-day streak (steeper as it grows). */
 function dayPenalty(days: number): number {
   if (days <= 1) return 0;
-  if (days === 2) return 14;
-  if (days === 3) return 26;
-  if (days === 4) return 36;
-  if (days === 5) return 44;
-  return Math.min(60, 44 + (days - 5) * 4);
+  if (days === 2) return 6;
+  if (days === 3) return 16;
+  if (days === 4) return 28;
+  if (days === 5) return 38;
+  return Math.min(55, 38 + (days - 5) * 5);
 }
 
 function formatList(items: string[]): string {
