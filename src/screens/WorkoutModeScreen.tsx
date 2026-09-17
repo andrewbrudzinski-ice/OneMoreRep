@@ -174,12 +174,16 @@ export function WorkoutModeScreen() {
     await repository.updateWorkout(workoutId, { notes });
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isPastSession = !editing && workout.started_at.slice(0, 10) < todayStr;
+
   return (
     <div className="min-h-screen bg-slate-950 pb-32">
       <SessionHeader
         name={workout.name}
         startedAt={workout.started_at}
         editing={editing}
+        isPast={isPastSession}
         onFinish={() => setFinishing(true)}
         onDone={doneEditing}
       />
@@ -261,16 +265,18 @@ function SessionHeader({
   name,
   startedAt,
   editing,
+  isPast,
   onFinish,
   onDone,
 }: {
   name: string;
   startedAt: string;
   editing: boolean;
+  isPast?: boolean;
   onFinish: () => void;
   onDone: () => void;
 }) {
-  const elapsed = useElapsedSeconds(startedAt);
+  const elapsed = useElapsedSeconds(isPast ? null : startedAt);
   return (
     <header className="sticky top-0 z-20 border-b border-hairline bg-ground/90 px-4 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
@@ -283,7 +289,13 @@ function SessionHeader({
           <div className="truncate text-base font-extrabold">{name}</div>
           {!editing && (
             <div className="flex items-center gap-1 text-sm tabular-nums text-slate-400">
-              <span aria-hidden>⏱</span> {formatDuration(elapsed)}
+              {isPast ? (
+                <span className="text-amber-400">Logging past session</span>
+              ) : (
+                <>
+                  <span aria-hidden>⏱</span> {formatDuration(elapsed)}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -418,6 +430,8 @@ function ExerciseBlock({
   const [menuOpen, setMenuOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
+  const isCardio = item.exercise?.movement_type === 'cardio';
+
   // Beat Last Time compares each set, in order, to the SAME set number from the
   // last time you did this exercise (set 1 vs set 1, set 2 vs set 2, …) — so the
   // ±weight is for that specific set's counterpart, not a session peak. Only the
@@ -455,6 +469,20 @@ function ExerciseBlock({
     });
     // In edit mode a new set is part of a finished session, so mark it done —
     // otherwise it wouldn't count toward volume or PRs.
+    if (editing) await repository.updateSet(created.id, { is_completed: true });
+    onChanged();
+  }
+
+  async function addWarmupSet() {
+    const warmups = item.sets.filter((s) => s.is_warmup);
+    const templ = warmups[warmups.length - 1];
+    const working = item.sets.filter((s) => !s.is_warmup);
+    const workTempl = working[0];
+    const created = await repository.addSet(item.id, {
+      weight: templ?.weight ?? (workTempl ? Math.round(workTempl.weight * 0.6) : 0),
+      reps: templ?.reps ?? (workTempl?.reps ?? 0),
+      is_warmup: true,
+    });
     if (editing) await repository.updateSet(created.id, { is_completed: true });
     onChanged();
   }
@@ -529,6 +557,7 @@ function ExerciseBlock({
               beatEnabled={settings.beat_comparison_enabled}
               loadAlwaysGreen={settings.load_always_green}
               intent={intent}
+              isCardio={isCardio}
               onChanged={onChanged}
               onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
             />
@@ -536,12 +565,22 @@ function ExerciseBlock({
         })}
       </div>
 
-      <button
-        onClick={addSet}
-        className="mt-2 w-full rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
-      >
-        + Add set
-      </button>
+      <div className="mt-2 flex gap-2">
+        {!isCardio && (
+          <button
+            onClick={addWarmupSet}
+            className="flex-1 rounded-control border border-dashed border-amber-500/40 py-2 text-sm text-amber-400/70 hover:border-amber-500/70 hover:text-amber-400"
+          >
+            + Warm-up
+          </button>
+        )}
+        <button
+          onClick={addSet}
+          className="flex-1 rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
+        >
+          + Add set
+        </button>
+      </div>
 
       {/* Plate breakdown only makes sense for a plate-loaded barbell. */}
       {topWeight > 0 && item.exercise?.equipment === 'barbell' && (
@@ -579,6 +618,7 @@ function SetRow({
   beatEnabled,
   loadAlwaysGreen,
   intent,
+  isCardio,
   onChanged,
   onComplete,
 }: {
@@ -588,6 +628,7 @@ function SetRow({
   beatEnabled: boolean;
   loadAlwaysGreen: boolean;
   intent: WorkoutIntent;
+  isCardio?: boolean;
   onChanged: () => void;
   onComplete: (willComplete: boolean) => void;
 }) {
@@ -638,20 +679,37 @@ function SetRow({
     <div className={`rounded-tile px-1 py-1.5 ${set.is_completed ? 'bg-surface2/50' : ''}`}>
       {/* Line 1 — the core logging controls */}
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={toggleWarmup}
-          className={`h-10 w-9 shrink-0 rounded-control text-xs font-bold ${
-            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
-          }`}
-          title="Toggle warm-up"
-          aria-label="Toggle warm-up"
-        >
-          {set.is_warmup ? 'W' : set.set_number}
-        </button>
+        {!isCardio && (
+          <button
+            onClick={toggleWarmup}
+            className={`h-10 w-9 shrink-0 rounded-control text-xs font-bold ${
+              set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
+            }`}
+            title="Toggle warm-up"
+            aria-label="Toggle warm-up"
+          >
+            {set.is_warmup ? 'W' : set.set_number}
+          </button>
+        )}
+        {isCardio && (
+          <span className="flex h-10 w-9 shrink-0 items-center justify-center rounded-control bg-surface2 text-xs font-bold text-ink3">
+            {set.set_number}
+          </span>
+        )}
 
-        <NumberField value={weight} step={weightStep} onChange={changeWeight} suffix={unit} />
-        <span className="text-slate-600">×</span>
-        <NumberField value={reps} step={1} onChange={changeReps} />
+        {isCardio ? (
+          <>
+            <NumberField value={weight} step={1} onChange={changeWeight} suffix="min" />
+            <span className="text-slate-600">·</span>
+            <NumberField value={reps} step={1} onChange={changeReps} suffix={unit === 'kg' ? 'km' : 'mi'} />
+          </>
+        ) : (
+          <>
+            <NumberField value={weight} step={weightStep} onChange={changeWeight} suffix={unit} />
+            <span className="text-slate-600">×</span>
+            <NumberField value={reps} step={1} onChange={changeReps} />
+          </>
+        )}
 
         <button
           onClick={() => onComplete(!set.is_completed)}
@@ -667,10 +725,10 @@ function SetRow({
       </div>
 
       {/* Line 2 — status on the left, an always-visible Delete on the right */}
-      <div className="mt-1 flex items-center justify-between pl-10">
-        {set.is_warmup ? (
+      <div className={`mt-1 flex items-center justify-between ${isCardio ? 'pl-1' : 'pl-10'}`}>
+        {!isCardio && set.is_warmup ? (
           <span className="text-[11px] font-medium text-amber-400">Warm-up (not counted)</span>
-        ) : beatEnabled ? (
+        ) : !isCardio && beatEnabled ? (
           <BeatBadge evaluation={evaluation} />
         ) : (
           <span />
@@ -713,7 +771,7 @@ function NumberField({
   return (
     <div className="flex items-center rounded-control border border-line bg-surface2">
       <button
-        onClick={() => onChange(value - step)}
+        onClick={() => onChange(Math.max(0, value - step))}
         className="h-10 w-9 rounded-l-control text-lg text-ink2 hover:bg-surface3"
         aria-label="Decrease"
       >
@@ -726,11 +784,14 @@ function NumberField({
         onChange={(e) => onChange(Number(e.target.value))}
         onFocus={(e) => e.target.select()}
         className="w-9 bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
-        aria-label={suffix ? `Weight in ${suffix}` : 'Reps'}
+        aria-label={suffix ? `Value in ${suffix}` : 'Reps'}
       />
+      {suffix && (
+        <span className="pr-1 text-[10px] font-medium text-ink3">{suffix}</span>
+      )}
       <button
         onClick={() => onChange(value + step)}
-        className="h-10 w-9 rounded-r-control text-lg text-ink2 hover:bg-surface3"
+        className={`h-10 w-9 text-lg text-ink2 hover:bg-surface3 ${suffix ? 'rounded-r-control' : 'rounded-r-control'}`}
         aria-label="Increase"
       >
         +
