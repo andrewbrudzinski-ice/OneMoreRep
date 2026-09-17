@@ -60,19 +60,19 @@ export function ReadinessCard({ readiness, p = 1 }: { readiness: ReadinessResult
         </Ring>
 
         <div className="min-w-0 flex-1 pt-0.5">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="text-[28px] font-extrabold leading-[0.9] tracking-[-0.03em]"
-              style={{ color: meta.color }}
-            >
-              {meta.word}
-            </div>
-            <div
-              className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+          <div
+            className="text-[28px] font-extrabold leading-[0.9] tracking-[-0.03em]"
+            style={{ color: meta.color }}
+          >
+            {meta.word}
+          </div>
+          <div className="mt-1.5">
+            <span
+              className="inline-block rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
               style={{ background: `${meta.color}1F`, color: meta.color }}
             >
               {meta.state}
-            </div>
+            </span>
           </div>
           <p className="mt-2 text-[13px] leading-[1.45] text-ink2">{readiness.suggestion}</p>
           {readiness.reasons.length > 0 && (
