@@ -544,43 +544,63 @@ function ExerciseBlock({
         </div>
       )}
 
-      <div className="mt-3 space-y-1.5">
-        {item.sets.map((set) => {
-          const workingIndex = workingIndexById.get(set.id);
-          const comparison = workingIndex === undefined ? null : (priorWorking[workingIndex] ?? null);
-          return (
-            <SetRow
-              key={set.id}
-              set={set}
-              unit={settings.units}
-              comparison={comparison}
-              beatEnabled={settings.beat_comparison_enabled}
-              loadAlwaysGreen={settings.load_always_green}
-              intent={intent}
-              isCardio={isCardio}
-              onChanged={onChanged}
-              onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
-            />
-          );
-        })}
-      </div>
-
-      <div className="mt-2 flex gap-2">
-        {!isCardio && (
+      {isCardio ? (
+        <>
+          <div className="mt-3 space-y-3">
+            {item.sets.map((set) => (
+              <CardioEntryRow
+                key={set.id}
+                set={set}
+                unit={settings.units}
+                onChanged={onChanged}
+                onComplete={(willComplete) => onCompleteSet(set.id, willComplete, null)}
+              />
+            ))}
+          </div>
           <button
-            onClick={addWarmupSet}
-            className="flex-1 rounded-control border border-dashed border-amber-500/40 py-2 text-sm text-amber-400/70 hover:border-amber-500/70 hover:text-amber-400"
+            onClick={addSet}
+            className="mt-3 w-full rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
           >
-            + Warm-up
+            + Add interval
           </button>
-        )}
-        <button
-          onClick={addSet}
-          className="flex-1 rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
-        >
-          + Add set
-        </button>
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-3 space-y-1.5">
+            {item.sets.map((set) => {
+              const workingIndex = workingIndexById.get(set.id);
+              const comparison = workingIndex === undefined ? null : (priorWorking[workingIndex] ?? null);
+              return (
+                <SetRow
+                  key={set.id}
+                  set={set}
+                  unit={settings.units}
+                  comparison={comparison}
+                  beatEnabled={settings.beat_comparison_enabled}
+                  loadAlwaysGreen={settings.load_always_green}
+                  intent={intent}
+                  onChanged={onChanged}
+                  onComplete={(willComplete) => onCompleteSet(set.id, willComplete, rememberedRest)}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={addWarmupSet}
+              className="flex-1 rounded-control border border-dashed border-amber-500/40 py-2 text-sm text-amber-400/70 hover:border-amber-500/70 hover:text-amber-400"
+            >
+              + Warm-up
+            </button>
+            <button
+              onClick={addSet}
+              className="flex-1 rounded-control border border-dashed border-line py-2 text-sm text-ink2 hover:border-line-strong hover:text-ink"
+            >
+              + Add set
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Plate breakdown only makes sense for a plate-loaded barbell. */}
       {topWeight > 0 && item.exercise?.equipment === 'barbell' && (
@@ -618,7 +638,6 @@ function SetRow({
   beatEnabled,
   loadAlwaysGreen,
   intent,
-  isCardio,
   onChanged,
   onComplete,
 }: {
@@ -628,7 +647,6 @@ function SetRow({
   beatEnabled: boolean;
   loadAlwaysGreen: boolean;
   intent: WorkoutIntent;
-  isCardio?: boolean;
   onChanged: () => void;
   onComplete: (willComplete: boolean) => void;
 }) {
@@ -679,37 +697,20 @@ function SetRow({
     <div className={`rounded-tile px-1 py-1.5 ${set.is_completed ? 'bg-surface2/50' : ''}`}>
       {/* Line 1 — the core logging controls */}
       <div className="flex items-center gap-1.5">
-        {!isCardio && (
-          <button
-            onClick={toggleWarmup}
-            className={`h-10 w-9 shrink-0 rounded-control text-xs font-bold ${
-              set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
-            }`}
-            title="Toggle warm-up"
-            aria-label="Toggle warm-up"
-          >
-            {set.is_warmup ? 'W' : set.set_number}
-          </button>
-        )}
-        {isCardio && (
-          <span className="flex h-10 w-9 shrink-0 items-center justify-center rounded-control bg-surface2 text-xs font-bold text-ink3">
-            {set.set_number}
-          </span>
-        )}
+        <button
+          onClick={toggleWarmup}
+          className={`h-10 w-9 shrink-0 rounded-control text-xs font-bold ${
+            set.is_warmup ? 'bg-amber-500/20 text-amber-400' : 'bg-surface2 text-ink3'
+          }`}
+          title="Toggle warm-up"
+          aria-label="Toggle warm-up"
+        >
+          {set.is_warmup ? 'W' : set.set_number}
+        </button>
 
-        {isCardio ? (
-          <>
-            <NumberField value={weight} step={1} onChange={changeWeight} suffix="min" />
-            <span className="text-slate-600">·</span>
-            <NumberField value={reps} step={1} onChange={changeReps} suffix={unit === 'kg' ? 'km' : 'mi'} />
-          </>
-        ) : (
-          <>
-            <NumberField value={weight} step={weightStep} onChange={changeWeight} suffix={unit} />
-            <span className="text-slate-600">×</span>
-            <NumberField value={reps} step={1} onChange={changeReps} />
-          </>
-        )}
+        <NumberField value={weight} step={weightStep} onChange={changeWeight} suffix={unit} />
+        <span className="text-slate-600">×</span>
+        <NumberField value={reps} step={1} onChange={changeReps} />
 
         <button
           onClick={() => onComplete(!set.is_completed)}
@@ -725,10 +726,10 @@ function SetRow({
       </div>
 
       {/* Line 2 — status on the left, an always-visible Delete on the right */}
-      <div className={`mt-1 flex items-center justify-between ${isCardio ? 'pl-1' : 'pl-10'}`}>
-        {!isCardio && set.is_warmup ? (
+      <div className="mt-1 flex items-center justify-between pl-10">
+        {set.is_warmup ? (
           <span className="text-[11px] font-medium text-amber-400">Warm-up (not counted)</span>
-        ) : !isCardio && beatEnabled ? (
+        ) : beatEnabled ? (
           <BeatBadge evaluation={evaluation} />
         ) : (
           <span />
@@ -753,6 +754,116 @@ function SetRow({
           Delete
         </button>
       </div>
+    </div>
+  );
+}
+
+function CardioEntryRow({
+  set,
+  unit,
+  onChanged,
+  onComplete,
+}: {
+  set: WorkoutSet;
+  unit: Settings['units'];
+  onChanged: () => void;
+  onComplete: (willComplete: boolean) => void;
+}) {
+  const repository = useRepository();
+  const [duration, setDuration] = useState(set.weight);
+  const [distance, setDistance] = useState(set.reps);
+  const [speed, setSpeed] = useState(set.rpe ?? 0);
+  const [incline, setIncline] = useState(set.rest_seconds ?? 0);
+
+  useEffect(() => {
+    setDuration(set.weight);
+    setDistance(set.reps);
+    setSpeed(set.rpe ?? 0);
+    setIncline(set.rest_seconds ?? 0);
+  }, [set.weight, set.reps, set.rpe, set.rest_seconds]);
+
+  function persist(patch: { weight?: number; reps?: number; rpe?: number | null; rest_seconds?: number | null }) {
+    void repository.updateSet(set.id, patch);
+  }
+
+  function changeDuration(v: number) {
+    const value = Math.max(0, v);
+    setDuration(value);
+    persist({ weight: value });
+  }
+  function changeDistance(v: number) {
+    const value = Math.max(0, v);
+    setDistance(value);
+    persist({ reps: value });
+  }
+  function changeSpeed(v: number) {
+    const value = Math.max(0, parseFloat(v.toFixed(1)));
+    setSpeed(value);
+    persist({ rpe: value });
+  }
+  function changeIncline(v: number) {
+    const value = Math.max(0, Math.min(45, v));
+    setIncline(value);
+    persist({ rest_seconds: value });
+  }
+
+  async function remove() {
+    await repository.removeSet(set.id);
+    onChanged();
+  }
+
+  const distUnit = unit === 'kg' ? 'km' : 'mi';
+  const speedUnit = unit === 'kg' ? 'km/h' : 'mph';
+
+  return (
+    <div className={`rounded-tile p-3 ${set.is_completed ? 'bg-surface2/50' : 'border border-line/50'}`}>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+        <CardioField label="Duration" suffix="min" value={duration} step={5} onChange={changeDuration} />
+        <CardioField label="Distance" suffix={distUnit} value={distance} step={1} onChange={changeDistance} />
+        <CardioField label="Speed" suffix={speedUnit} value={speed} step={0.5} onChange={changeSpeed} />
+        <CardioField label="Incline" suffix="%" value={incline} step={1} onChange={changeIncline} />
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          onClick={remove}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:bg-fatigued/10 hover:text-fatigued"
+          aria-label="Delete entry"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+          </svg>
+          Delete
+        </button>
+        <button
+          onClick={() => onComplete(!set.is_completed)}
+          className={`rounded-control px-4 py-1.5 text-sm font-semibold transition-colors ${
+            set.is_completed ? 'bg-accent text-on-accent' : 'bg-surface2 text-ink2 hover:bg-surface3'
+          }`}
+        >
+          {set.is_completed ? '✓ Done' : 'Mark done'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CardioField({
+  label,
+  suffix,
+  value,
+  step,
+  onChange,
+}: {
+  label: string;
+  suffix: string;
+  value: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-ink3">{label}</div>
+      <NumberField value={value} step={step} onChange={onChange} suffix={suffix} />
     </div>
   );
 }
