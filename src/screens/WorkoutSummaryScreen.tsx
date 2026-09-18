@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Spinner } from '../components/ui';
 import { ScreenHeader, PageBody } from '../components/ScreenHeader';
@@ -7,6 +8,7 @@ import { useAsync } from '../hooks/useAsync';
 import { formatDuration } from '../hooks/useElapsedSeconds';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
 import type { VsLastTone } from '../lib/workoutSummary';
+import { computeBeatStats, generateRecap } from '../lib/workoutRecap';
 import type { Settings, WorkoutSet } from '../types';
 
 const TONE_CLASSES: Record<VsLastTone, string> = {
@@ -30,13 +32,20 @@ export function WorkoutSummaryScreen() {
       repository.getSettings(),
       repository.getWorkoutDetail(workoutId),
     ]);
-    return { summary, settings, detail };
+    if (!detail || !summary) return { summary, settings, detail, lastByExercise: new Map() };
+    const exIds = [...new Set(detail.exercises.map((e) => e.exercise_id))];
+    const lastList = await Promise.all(
+      exIds.map((id) => repository.getLastSession(id, { excludeWorkoutId: workoutId })),
+    );
+    const lastByExercise = new Map(exIds.map((id, i) => [id, lastList[i]]));
+    return { summary, settings, detail, lastByExercise };
   }, [workoutId]);
 
   if (state.loading) return <Spinner />;
   const summary = state.data?.summary;
   const settings = state.data?.settings;
   const detail = state.data?.detail;
+  const lastByExercise = state.data?.lastByExercise ?? new Map();
   if (!summary || !settings) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
@@ -48,6 +57,19 @@ export function WorkoutSummaryScreen() {
 
   const unit = settings.units;
   const date = summary.workout.completed_at ?? summary.workout.started_at;
+
+  const beatStats = useMemo(
+    () =>
+      detail
+        ? computeBeatStats(detail.exercises, lastByExercise, settings.beat_lookback_weeks)
+        : null,
+    [detail, lastByExercise, settings.beat_lookback_weeks],
+  );
+
+  const recap = useMemo(
+    () => generateRecap(summary, beatStats, unit),
+    [summary, beatStats, unit],
+  );
 
   return (
     <>
@@ -61,6 +83,34 @@ export function WorkoutSummaryScreen() {
           <Stat label="Sets" value={String(summary.workingSetCount)} />
           <Stat label={`Vol ${unit}`} value={formatNumber(summary.totalVolume)} />
         </section>
+
+        {/* Recap — auto-generated plain-English summary */}
+        <Panel className="p-4">
+          <PanelHeader label="Recap" />
+          <p className="mt-2 text-[13.5px] leading-relaxed text-ink2">{recap}</p>
+        </Panel>
+
+        {/* Beat last session */}
+        {beatStats && beatStats.total > 0 && (
+          <Panel className="p-4">
+            <PanelHeader label="Beat last session" />
+            <div className="mt-3 flex items-end gap-3">
+              <span className="text-[32px] font-extrabold leading-none tabular-nums text-accent">
+                {beatStats.won}
+              </span>
+              <span className="mb-1 text-[14px] text-ink3">/ {beatStats.total} sets</span>
+            </div>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+              <div
+                className="h-full rounded-full bg-accent transition-all"
+                style={{ width: `${Math.round((beatStats.won / beatStats.total) * 100)}%` }}
+              />
+            </div>
+            <div className="mt-1.5 text-[10.5px] text-ink3">
+              {beatStats.total - beatStats.won} set{beatStats.total - beatStats.won !== 1 ? 's' : ''} matched or below last time
+            </div>
+          </Panel>
+        )}
 
         {/* vs last time — module panel */}
         <Panel className="p-4">
