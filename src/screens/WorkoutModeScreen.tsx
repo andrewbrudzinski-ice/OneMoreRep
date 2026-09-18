@@ -41,6 +41,7 @@ export function WorkoutModeScreen() {
   const rest = useRestTimer();
   const [picking, setPicking] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [timerOpen, setTimerOpen] = useState(false);
   const seededRef = useRef<Set<string>>(new Set());
 
   useWakeLock(true);
@@ -221,9 +222,20 @@ export function WorkoutModeScreen() {
           ))
         )}
 
-        <Button variant="secondary" className="w-full" onClick={() => setPicking(true)}>
-          + Add exercise
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => setPicking(true)}>
+            + Add exercise
+          </Button>
+          {!editing && (
+            <button
+              onClick={() => setTimerOpen(true)}
+              className="rounded-control border border-line bg-surface2 px-3 text-ink2 hover:bg-surface3"
+              aria-label="Start timer"
+            >
+              ⏱
+            </button>
+          )}
+        </div>
 
         {!editing && <SessionNotes notes={workout.notes} onChangeNotes={changeNotes} />}
       </div>
@@ -231,6 +243,13 @@ export function WorkoutModeScreen() {
       {rest.active && <RestTimerBar rest={rest} />}
 
       {picking && <ExercisePicker onPick={addExercise} onClose={() => setPicking(false)} />}
+
+      {timerOpen && (
+        <TimerModal
+          onStart={(s) => { rest.start(s); setTimerOpen(false); }}
+          onClose={() => setTimerOpen(false)}
+        />
+      )}
 
       {finishing && !editing && (
         <Modal
@@ -990,6 +1009,62 @@ function ExercisePicker({
             ))}
           </ul>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+function TimerModal({ onStart, onClose }: { onStart: (seconds: number) => void; onClose: () => void }) {
+  const [minutes, setMinutes] = useState(2);
+  const [seconds, setSeconds] = useState(0);
+
+  const total = minutes * 60 + seconds;
+
+  const presets = [30, 60, 90, 120, 180, 300];
+
+  return (
+    <Modal
+      title="Set timer"
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={() => total > 0 && onStart(total)} disabled={total === 0}>
+            Start
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-5">
+        {/* Preset quick-pick */}
+        <div className="flex flex-wrap gap-2">
+          {presets.map((s) => (
+            <button
+              key={s}
+              onClick={() => { setMinutes(Math.floor(s / 60)); setSeconds(s % 60); }}
+              className={`rounded-control border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                total === s ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface2 text-ink2 hover:text-ink'
+              }`}
+            >
+              {s < 60 ? `${s}s` : `${s / 60}m`}
+            </button>
+          ))}
+        </div>
+        {/* Manual steppers */}
+        <div className="flex items-center justify-center gap-4">
+          <NumberField
+            value={minutes}
+            step={1}
+            onChange={(v) => setMinutes(Math.max(0, Math.min(99, Math.round(v))))}
+            suffix="min"
+          />
+          <NumberField
+            value={seconds}
+            step={15}
+            onChange={(v) => setSeconds(Math.max(0, Math.min(59, Math.round(v))))}
+            suffix="sec"
+          />
+        </div>
       </div>
     </Modal>
   );
