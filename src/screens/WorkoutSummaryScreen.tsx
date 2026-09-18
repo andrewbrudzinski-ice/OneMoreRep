@@ -41,11 +41,25 @@ export function WorkoutSummaryScreen() {
     return { summary, settings, detail, lastByExercise };
   }, [workoutId]);
 
-  if (state.loading) return <Spinner />;
   const summary = state.data?.summary;
   const settings = state.data?.settings;
   const detail = state.data?.detail;
   const lastByExercise = state.data?.lastByExercise ?? new Map();
+
+  const beatStats = useMemo(
+    () =>
+      detail && settings
+        ? computeBeatStats(detail.exercises, lastByExercise, settings.beat_lookback_weeks)
+        : null,
+    [detail, lastByExercise, settings],
+  );
+
+  const recap = useMemo(
+    () => (summary && settings ? generateRecap(summary, beatStats, settings.units) : ''),
+    [summary, beatStats, settings],
+  );
+
+  if (state.loading) return <Spinner />;
   if (!summary || !settings) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
@@ -57,19 +71,6 @@ export function WorkoutSummaryScreen() {
 
   const unit = settings.units;
   const date = summary.workout.completed_at ?? summary.workout.started_at;
-
-  const beatStats = useMemo(
-    () =>
-      detail
-        ? computeBeatStats(detail.exercises, lastByExercise, settings.beat_lookback_weeks)
-        : null,
-    [detail, lastByExercise, settings.beat_lookback_weeks],
-  );
-
-  const recap = useMemo(
-    () => generateRecap(summary, beatStats, unit),
-    [summary, beatStats, unit],
-  );
 
   return (
     <>
