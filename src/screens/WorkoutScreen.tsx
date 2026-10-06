@@ -1,21 +1,24 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader, PageBody } from '../components/ScreenHeader';
-import { EmptyState, ErrorState, Spinner, Modal, Button } from '../components/ui';
+import { Chip, EmptyState, ErrorState, Spinner, Modal, Button } from '../components/ui';
 import { ArrowRight, Panel, PrimaryAction, SectionHeader, SectionLabel } from '../components/primitives';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { dayLabel } from '../lib/labels';
-import type { Routine, Workout } from '../types';
+import type { MuscleGroup, Routine, Workout } from '../types';
 
 interface RoutineRow {
   routine: Routine;
   count: number;
+  /** Top muscle group IDs for this routine, ordered by exercise count. */
+  muscleGroupIds: string[];
 }
 
 interface WorkoutTabData {
   routines: RoutineRow[];
   active: Workout | undefined;
+  muscleGroups: MuscleGroup[];
 }
 
 export function WorkoutScreen() {
@@ -24,17 +27,29 @@ export function WorkoutScreen() {
   const [logPastOpen, setLogPastOpen] = useState(false);
   const [pastDate, setPastDate] = useState('');
   const [pastName, setPastName] = useState('');
+  const [muscleFilter, setMuscleFilter] = useState<string | null>(null);
 
   const state = useAsync<WorkoutTabData>(async () => {
-    const [routines, active] = await Promise.all([
+    const [routines, active, muscleGroups] = await Promise.all([
       repository.getRoutines(),
       repository.getActiveWorkout(),
+      repository.getMuscleGroups(),
     ]);
     const details = await Promise.all(routines.map((r) => repository.getRoutineDetail(r.id)));
-    return {
-      routines: routines.map((routine, i) => ({ routine, count: details[i]?.items.length ?? 0 })),
-      active,
-    };
+    const routineRows: RoutineRow[] = routines.map((routine, i) => {
+      const items = details[i]?.items ?? [];
+      // Count exercises per muscle group to rank them.
+      const tally = new Map<string, number>();
+      for (const item of items) {
+        const mgId = item.exercise?.primary_muscle_group_id;
+        if (mgId) tally.set(mgId, (tally.get(mgId) ?? 0) + 1);
+      }
+      const muscleGroupIds = [...tally.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([id]) => id);
+      return { routine, count: items.length, muscleGroupIds };
+    });
+    return { routines: routineRows, active, muscleGroups };
   }, []);
 
   async function createAndEdit() {
@@ -80,7 +95,28 @@ export function WorkoutScreen() {
   }
 
   const active = state.data?.active;
-  const routines = state.data?.routines ?? [];
+  const allRoutines = state.data?.routines ?? [];
+  const muscleGroups = state.data?.muscleGroups ?? [];
+
+  // Build a lookup map for muscle group names.
+  const groupName = useMemo(() => {
+    const map = new Map(muscleGroups.map((g) => [g.id, g.name]));
+    return (id: string) => map.get(id) ?? id;
+  }, [muscleGroups]);
+
+  // Only show chips for muscle groups that appear in at least one routine.
+  const usedGroups = useMemo(() => {
+    const used = new Set(allRoutines.flatMap((r) => r.muscleGroupIds));
+    return muscleGroups.filter((g) => used.has(g.id));
+  }, [allRoutines, muscleGroups]);
+
+  const routines = useMemo(
+    () =>
+      muscleFilter
+        ? allRoutines.filter((r) => r.muscleGroupIds.includes(muscleFilter))
+        : allRoutines,
+    [allRoutines, muscleFilter],
+  );
 
   return (
     <>
@@ -137,49 +173,88 @@ export function WorkoutScreen() {
             <ErrorState error={state.error} onRetry={state.reload} />
           ) : state.loading ? (
             <Spinner />
-          ) : routines.length === 0 ? (
+          ) : allRoutines.length === 0 ? (
             <EmptyState
               title="No routines yet"
               note="Create a routine to plan your sets, reps, and exercise order — then start it in one tap."
             />
           ) : (
-            <ul className="mt-1">
-              {routines.map(({ routine, count }) => (
-                <li
-                  key={routine.id}
-                  className="grid grid-cols-[1fr_auto] gap-3 border-t border-hairline py-4 first:border-t-0"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="truncate text-[16px] font-extrabold tracking-[-0.015em] text-ink">
-                        {routine.name}
-                      </span>
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.13em] text-ink4">
-                        {dayLabel(routine.day_of_week)}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[12px] text-ink2">
-                      {count} {count === 1 ? 'exercise' : 'exercises'}
-                      {routine.notes ? ` · ${routine.notes}` : ''}
-                    </div>
-                    <div className="mt-2 flex gap-4">
-                      <TextButton onClick={() => navigate(`/workout/routines/${routine.id}`)}>Edit</TextButton>
-                      <TextButton onClick={() => duplicate(routine.id)}>Duplicate</TextButton>
-                      <TextButton onClick={() => remove(routine.id)} danger>
-                        Delete
-                      </TextButton>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => startFromRoutine(routine)}
-                    disabled={count === 0}
-                    className="self-start rounded-control border border-accent px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent hover:text-on-accent disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
-                  >
-                    Start
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              {/* Muscle group filter chips — only shown when there are tagged routines */}
+              {usedGroups.length > 0 && (
+                <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 pt-3">
+                  <Chip active={muscleFilter === null} onClick={() => setMuscleFilter(null)}>
+                    All
+                  </Chip>
+                  {usedGroups.map((g) => (
+                    <Chip
+                      key={g.id}
+                      active={muscleFilter === g.id}
+                      onClick={() => setMuscleFilter(g.id)}
+                    >
+                      {g.name}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+
+              {routines.length === 0 ? (
+                <p className="mt-4 text-[12.5px] text-ink3">
+                  No routines target {groupName(muscleFilter!)} — try a different muscle group.
+                </p>
+              ) : (
+                <ul className="mt-1">
+                  {routines.map(({ routine, count, muscleGroupIds }) => (
+                    <li
+                      key={routine.id}
+                      className="grid grid-cols-[1fr_auto] gap-3 border-t border-hairline py-4 first:border-t-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="truncate text-[16px] font-extrabold tracking-[-0.015em] text-ink">
+                            {routine.name}
+                          </span>
+                          <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.13em] text-ink4">
+                            {dayLabel(routine.day_of_week)}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[12px] text-ink2">
+                          {count} {count === 1 ? 'exercise' : 'exercises'}
+                          {routine.notes ? ` · ${routine.notes}` : ''}
+                        </div>
+                        {/* Muscle group tags */}
+                        {muscleGroupIds.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {muscleGroupIds.slice(0, 4).map((mgId) => (
+                              <span
+                                key={mgId}
+                                className="rounded-full bg-surface2 px-2 py-0.5 text-[10px] font-medium text-ink3"
+                              >
+                                {groupName(mgId)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-2 flex gap-4">
+                          <TextButton onClick={() => navigate(`/workout/routines/${routine.id}`)}>Edit</TextButton>
+                          <TextButton onClick={() => duplicate(routine.id)}>Duplicate</TextButton>
+                          <TextButton onClick={() => remove(routine.id)} danger>
+                            Delete
+                          </TextButton>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => startFromRoutine(routine)}
+                        disabled={count === 0}
+                        className="self-start rounded-control border border-accent px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent hover:text-on-accent disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
+                      >
+                        Start
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </section>
       </PageBody>
