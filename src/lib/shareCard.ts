@@ -26,7 +26,6 @@ export interface ShareCardParams {
 // Colors
 // ---------------------------------------------------------------------------
 const BG = '#0E0E0E';
-const BG2 = '#1A1A1A';
 const ACCENT = '#8FE81E';
 const BEAT = '#4ADE80';
 const INK = '#F5F5F5';

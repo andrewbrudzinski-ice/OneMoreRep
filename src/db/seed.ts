@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS: Omit<Settings, 'created_at' | 'updated_at'> = {
   beat_comparison_enabled: true,
   beat_lookback_weeks: 3,
   starter_routines_seeded: false,
+  show_daily_quote: true,
 };
 
 /**
