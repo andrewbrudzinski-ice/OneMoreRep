@@ -14,6 +14,8 @@ import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
+import { computeImbalances } from '../lib/muscleImbalance';
+import type { ImbalanceSeverity, BalanceBar } from '../lib/muscleImbalance';
 import type { ReadinessLevel } from '../lib/readiness';
 import type { MuscleHeatmapCell, ProgressStats } from '../repository/Repository';
 import type { Exercise, PersonalRecord, Settings } from '../types';
@@ -31,7 +33,7 @@ export function ProgressScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const state = useAsync(async () => {
-    const [prs, exercises, settings, stats, readiness, heatmap, history] = await Promise.all([
+    const [prs, exercises, settings, stats, readiness, heatmap, history, muscleTotals] = await Promise.all([
       repository.getPersonalRecords(),
       repository.getExercises({ includeArchived: true }),
       repository.getSettings(),
@@ -39,8 +41,9 @@ export function ProgressScreen() {
       repository.getReadiness(),
       repository.getMuscleHeatmap(),
       repository.getWorkoutHistory(),
+      repository.getMuscleTotals(4),
     ]);
-    return { prs, exercises, settings, stats, readiness, heatmap, history };
+    return { prs, exercises, settings, stats, readiness, heatmap, history, muscleTotals };
   }, []);
 
   const p = useAnimationProgress(state.data);
@@ -72,7 +75,8 @@ export function ProgressScreen() {
   if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
   if (state.loading || !state.data) return <Spinner />;
 
-  const { prs, settings, stats, readiness, heatmap } = state.data;
+  const { prs, settings, stats, readiness, heatmap, muscleTotals } = state.data;
+  const imbalances = computeImbalances(muscleTotals);
   const unit = settings.units;
   const nothingYet = prs.length === 0 && stats.totalWorkouts === 0;
   const meta = LEVEL_META[readiness.level];
@@ -134,6 +138,11 @@ export function ProgressScreen() {
               expanded={expanded}
               onToggle={(id) => setExpanded((cur) => (cur === id ? null : id))}
             />
+          )}
+
+          {/* Muscle balance — panel */}
+          {imbalances.hasData && (
+            <MuscleBalance imbalances={imbalances} />
           )}
 
           {/* Nutrition adherence — open section */}
@@ -324,4 +333,60 @@ function formatPr(pr: PersonalRecord, unit: Settings['units']): string {
     default:
       return `${formatNumber(pr.value)} ${unit}`;
   }
+}
+
+const SEV_COLORS: Record<ImbalanceSeverity, string> = {
+  good: 'bg-accent',
+  warn: 'bg-[#F2B33D]',
+  alert: 'bg-[#FB923C]',
+};
+
+function BalanceBarRow({ bar }: { bar: BalanceBar }) {
+  const pctA = Math.round(bar.fractionA * 100);
+  const pctB = 100 - pctA;
+  const color = SEV_COLORS[bar.severity];
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-[11.5px]">
+        <span className="font-semibold text-ink">{bar.labelA}</span>
+        <span className="text-[10.5px] tabular-nums text-ink3">
+          {pctA}% / {pctB}%
+        </span>
+        <span className="font-semibold text-ink">{bar.labelB}</span>
+      </div>
+      <div className="flex h-[6px] overflow-hidden rounded-full bg-surface2">
+        <div className={`${color} transition-all`} style={{ width: `${pctA}%` }} />
+      </div>
+      {bar.suggestion && (
+        <p className="text-[11px] leading-snug text-ink2">{bar.suggestion}</p>
+      )}
+    </div>
+  );
+}
+
+function MuscleBalance({ imbalances }: { imbalances: ReturnType<typeof computeImbalances> }) {
+  const bars = [imbalances.pushPull, imbalances.upperLower, imbalances.quadPosterior];
+  const flagCount = imbalances.flags.length;
+
+  return (
+    <Panel className="p-4">
+      <PanelHeader label="Muscle balance (4 weeks)" />
+      {flagCount > 0 && (
+        <div className="mt-3 rounded-tile border border-[#FB923C]/30 bg-[#FB923C]/8 px-3 py-2.5 text-[12px] leading-snug text-[#FB923C]">
+          {flagCount === 1
+            ? imbalances.flags[0]!.suggestion
+            : `${flagCount} imbalances detected — see suggestions below`}
+        </div>
+      )}
+      <div className="mt-4 space-y-5">
+        {bars.map((bar) => (
+          <BalanceBarRow key={bar.labelA} bar={bar} />
+        ))}
+      </div>
+      <p className="mt-4 text-[11px] text-ink3">
+        Based on working volume over the last 4 weeks. Green = balanced, amber = moderate, orange = significant imbalance.
+      </p>
+    </Panel>
+  );
 }
