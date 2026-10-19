@@ -16,7 +16,9 @@ import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
 import { computeImbalances } from '../lib/muscleImbalance';
 import type { ImbalanceSeverity, BalanceBar } from '../lib/muscleImbalance';
-import { addDays, dayDiff } from '../lib/dates';
+import { generateWeeklyDigest } from '../lib/weeklyDigest';
+import type { WeeklyDigest, DigestLine } from '../lib/weeklyDigest';
+import { addDays, dayDiff, startOfWeek } from '../lib/dates';
 import { todayDateString } from '../lib/id';
 import type { ReadinessLevel } from '../lib/readiness';
 import type { MuscleHeatmapCell, ProgressStats } from '../repository/Repository';
@@ -82,6 +84,29 @@ export function ProgressScreen() {
   const imbalances = computeImbalances(muscleTotals);
   const unit = settings.units;
   const nothingYet = prs.length === 0 && stats.totalWorkouts === 0;
+
+  const weeklyDigest = useMemo(() => {
+    const today = todayDateString();
+    const monday = startOfWeek(today);
+    const newPRsThisWeek = prs
+      .filter((pr) => pr.achieved_at >= monday)
+      .map((pr) => ({
+        exerciseName: exerciseById.get(pr.exercise_id)?.name ?? 'Exercise',
+        value: Math.round(pr.value),
+      }));
+    const topMuscle = muscleTotals.length > 0
+      ? muscleTotals.reduce((a, b) => (b.volume > a.volume ? b : a)).name
+      : null;
+    return generateWeeklyDigest({
+      workoutsThisWeek: stats.workoutsThisWeek,
+      currentStreak: stats.currentStreak,
+      volume: Math.round(heatmap.reduce((sum, c) => sum + c.volume, 0)),
+      unit,
+      imbalances,
+      topMuscleName: topMuscle,
+      newPRsThisWeek,
+    });
+  }, [prs, muscleTotals, stats, heatmap, unit, imbalances, exerciseById]);
   const meta = LEVEL_META[readiness.level];
 
   return (
@@ -95,6 +120,9 @@ export function ProgressScreen() {
         />
       ) : (
         <PageBody>
+          {/* Weekly coaching digest */}
+          <WeeklyDigestPanel digest={weeklyDigest} />
+
           {/* Readiness — compact panel */}
           <Panel className="flex items-center justify-between gap-4 p-4">
             <div className="min-w-0">
@@ -327,6 +355,61 @@ function MacroConsistency({ stats }: { stats: ProgressStats }) {
         <p className="mt-2 text-[11.5px] text-ink3">Log food to track adherence.</p>
       )}
     </section>
+  );
+}
+
+const LINE_ICON: Record<DigestLine['kind'], string> = {
+  good: '✓',
+  tip: '→',
+  warn: '!',
+  pr: '★',
+};
+
+const LINE_COLOR: Record<DigestLine['kind'], string> = {
+  good: 'text-accent',
+  tip: 'text-ink2',
+  warn: 'text-[#FB923C]',
+  pr: 'text-beat',
+};
+
+function WeeklyDigestPanel({ digest }: { digest: WeeklyDigest }) {
+  return (
+    <Panel className="p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <PanelHeader label="Weekly digest" />
+        <span className="text-[10.5px] text-ink4">{digest.weekLabel}</span>
+      </div>
+
+      <div className="mt-3 flex gap-4 border-b border-hairline pb-3">
+        <div>
+          <div className="text-[22px] font-extrabold tabular-nums leading-none text-ink">
+            {digest.workouts}
+          </div>
+          <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.13em] text-ink3">
+            Sessions
+          </div>
+        </div>
+        <div>
+          <div className="text-[22px] font-extrabold tabular-nums leading-none text-ink">
+            {digest.volume.toLocaleString()}
+          </div>
+          <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.13em] text-ink3">
+            {digest.unit} volume
+          </div>
+        </div>
+      </div>
+
+      <ul className="mt-3 space-y-2">
+        {digest.lines.map((line, i) => (
+          <li key={i} className="flex gap-2.5 text-[12.5px]">
+            <span className={`mt-0.5 shrink-0 text-[11px] font-extrabold ${LINE_COLOR[line.kind]}`}>
+              {LINE_ICON[line.kind]}
+            </span>
+            <span className="leading-snug text-ink2">{line.text}</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
 
