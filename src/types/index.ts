@@ -55,6 +55,8 @@ export interface Settings extends BaseRecord {
   beat_comparison_enabled: boolean;
   /** Compare each set against your best set over this many recent weeks. Default 3. */
   beat_lookback_weeks: number;
+  /** When true, a daily motivational quote is shown on the home screen. Default true. */
+  show_daily_quote: boolean;
   /** Internal: set once the starter routine templates have been seeded. */
   starter_routines_seeded?: boolean;
 }

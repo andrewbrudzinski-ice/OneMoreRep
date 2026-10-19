@@ -21,6 +21,7 @@ import { useAsync } from '../hooks/useAsync';
 import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { todayDateString } from '../lib/id';
 import { formatDecimal, formatNumber, PR_TYPE_LABELS } from '../lib/format';
+import { getDailyQuote } from '../lib/dailyQuote';
 import type { DashboardData } from '../repository/Repository';
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -106,6 +107,9 @@ export function HomeScreen() {
       <PageBody>
         {/* 1 — Readiness (bordered hero) */}
         <ReadinessCard readiness={d.readiness} p={p} />
+
+        {/* 1b — Daily motivational quote */}
+        {d.settings.show_daily_quote && <DailyQuoteCard />}
 
         {/* 2 — Today's workout (bordered action module) */}
         <Panel className="p-4">
@@ -263,6 +267,26 @@ export function HomeScreen() {
         />
       )}
     </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Daily quote card                                                           */
+/* -------------------------------------------------------------------------- */
+
+function DailyQuoteCard() {
+  const { text, author } = getDailyQuote();
+  return (
+    <div className="relative overflow-hidden rounded-tile border border-hairline px-4 py-3.5">
+      <span
+        className="pointer-events-none absolute left-2 top-1 text-[48px] font-black leading-none text-accent/15 select-none"
+        aria-hidden
+      >
+        "
+      </span>
+      <p className="relative text-[13px] font-medium leading-relaxed text-ink2">{text}</p>
+      <p className="mt-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink4">— {author}</p>
+    </div>
   );
 }
 

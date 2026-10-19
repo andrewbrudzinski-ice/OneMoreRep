@@ -70,6 +70,7 @@ function SettingsForm({
   const [sex, setSex] = useState<Sex>(initialSettings.sex);
   const [rest, setRest] = useState(String(initialSettings.default_rest_seconds));
   const [loadAlwaysGreen, setLoadAlwaysGreen] = useState(initialSettings.load_always_green);
+  const [showDailyQuote, setShowDailyQuote] = useState(initialSettings.show_daily_quote);
   const [beatEnabled, setBeatEnabled] = useState(initialSettings.beat_comparison_enabled);
   const [beatLookback, setBeatLookback] = useState(String(initialSettings.beat_lookback_weeks));
   const [calories, setCalories] = useState(str(initialSettings.calorie_target));
@@ -92,6 +93,7 @@ function SettingsForm({
         sex,
         default_rest_seconds: numOr(rest, 120),
         load_always_green: loadAlwaysGreen,
+        show_daily_quote: showDailyQuote,
         beat_comparison_enabled: beatEnabled,
         beat_lookback_weeks: Math.min(52, Math.max(1, numOr(beatLookback, 3))),
         calorie_target: numOrNull(calories),
@@ -149,6 +151,23 @@ function SettingsForm({
           <TextField label="Fat (g)" type="number" value={fat} onChange={(e) => setFat(e.target.value)} />
           <TextField label="Fiber (g)" type="number" value={fiber} onChange={(e) => setFiber(e.target.value)} />
         </div>
+      </Section>
+
+      <Section title="Home screen">
+        <label className="flex items-center justify-between gap-3 rounded-tile border border-line bg-surface2 p-3.5">
+          <span className="text-sm text-ink">
+            <span className="font-semibold">Daily motivational quote</span>
+            <span className="mt-0.5 block text-xs text-ink3">
+              Show an inspiring quote at the top of the home screen each day.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={showDailyQuote}
+            onChange={(e) => setShowDailyQuote(e.target.checked)}
+            className="h-5 w-5 accent-beat"
+          />
+        </label>
       </Section>
 
       <Section title="Training">

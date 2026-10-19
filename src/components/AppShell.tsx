@@ -128,10 +128,10 @@ export function AppShell() {
         </div>
       </main>
 
-      {/* Bottom tab bar (mobile) — opaque, hairline top, active tab lifted onto
-          a soft accent chip with a top accent bar. */}
+      {/* Bottom tab bar (mobile) — frosted glass, hairline top, active tab
+          lifted onto a soft accent chip with a top accent bar. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-hairline bg-ground px-2 pt-1.5 shadow-[0_-1px_0_0_rgba(0,0,0,0.4)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1.5 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {TABS.map((tab) => (
