@@ -77,15 +77,13 @@ export function ProgressScreen() {
     return map;
   }, [state.data?.history]);
 
-  if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
-  if (state.loading || !state.data) return <Spinner />;
-
-  const { prs, settings, stats, readiness, heatmap, muscleTotals, activeMeso } = state.data;
-  const imbalances = computeImbalances(muscleTotals);
-  const unit = settings.units;
-  const nothingYet = prs.length === 0 && stats.totalWorkouts === 0;
-
   const weeklyDigest = useMemo(() => {
+    const prs = state.data?.prs ?? [];
+    const muscleTotals = state.data?.muscleTotals ?? [];
+    const stats = state.data?.stats;
+    const heatmap = state.data?.heatmap ?? [];
+    const unit = state.data?.settings.units ?? 'lbs';
+    const imbalances = computeImbalances(muscleTotals);
     const today = todayDateString();
     const monday = startOfWeek(today);
     const newPRsThisWeek = prs
@@ -98,15 +96,23 @@ export function ProgressScreen() {
       ? muscleTotals.reduce((a, b) => (b.volume > a.volume ? b : a)).name
       : null;
     return generateWeeklyDigest({
-      workoutsThisWeek: stats.workoutsThisWeek,
-      currentStreak: stats.currentStreak,
+      workoutsThisWeek: stats?.workoutsThisWeek ?? 0,
+      currentStreak: stats?.currentStreak ?? 0,
       volume: Math.round(heatmap.reduce((sum, c) => sum + c.volume, 0)),
       unit,
       imbalances,
       topMuscleName: topMuscle,
       newPRsThisWeek,
     });
-  }, [prs, muscleTotals, stats, heatmap, unit, imbalances, exerciseById]);
+  }, [state.data, exerciseById]);
+
+  if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
+  if (state.loading || !state.data) return <Spinner />;
+
+  const { prs, settings, stats, readiness, heatmap, muscleTotals, activeMeso } = state.data;
+  const imbalances = computeImbalances(muscleTotals);
+  const unit = settings.units;
+  const nothingYet = prs.length === 0 && stats.totalWorkouts === 0;
   const meta = LEVEL_META[readiness.level];
 
   return (
