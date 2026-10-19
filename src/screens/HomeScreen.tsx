@@ -277,15 +277,12 @@ export function HomeScreen() {
 function DailyQuoteCard() {
   const { text, author } = getDailyQuote();
   return (
-    <div className="relative overflow-hidden rounded-tile border border-hairline px-4 py-3.5">
-      <span
-        className="pointer-events-none absolute left-2 top-1 text-[48px] font-black leading-none text-accent/15 select-none"
-        aria-hidden
-      >
-        "
-      </span>
-      <p className="relative text-[13px] font-medium leading-relaxed text-ink2">{text}</p>
-      <p className="mt-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink4">— {author}</p>
+    <div className="flex gap-3 rounded-tile bg-surface px-4 py-4">
+      <div className="mt-0.5 w-[3px] shrink-0 rounded-full bg-accent/50" />
+      <div className="min-w-0">
+        <p className="text-[13.5px] leading-relaxed text-ink">{text}</p>
+        <p className="mt-2 text-[11px] font-semibold text-ink3">{author}</p>
+      </div>
     </div>
   );
 }
