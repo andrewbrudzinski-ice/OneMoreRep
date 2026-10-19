@@ -75,7 +75,7 @@ export function WorkoutSummaryScreen() {
   const date = summary.workout.completed_at ?? summary.workout.started_at;
 
   async function handleShare() {
-    if (!detail) return;
+    if (!detail || !summary) return;
     setSharing(true);
     try {
       const exercises = detail.exercises.slice(0, 5).map((item) => {

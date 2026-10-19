@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ScreenHeader, PageBody } from '../components/ScreenHeader';
 import { Button, EmptyState, ErrorState, Modal, Spinner, TextField } from '../components/ui';
-import { Panel, PanelHeader, SectionHeader } from '../components/primitives';
+import { Panel, SectionHeader } from '../components/primitives';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
 import { todayDateString } from '../lib/id';

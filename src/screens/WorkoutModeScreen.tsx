@@ -428,7 +428,7 @@ function IntentSelector({
 function ExerciseBlock({
   item,
   last,
-  suggestion,
+  suggestion: _suggestion,
   rememberedRest,
   settings,
   intent,
