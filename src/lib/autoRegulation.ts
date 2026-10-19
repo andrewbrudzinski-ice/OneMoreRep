@@ -1,11 +1,86 @@
 import type { Units } from '../types';
 
 /**
- * RPE auto-regulation — a transparent, opt-in nudge. The rule (spec §11):
- * "hit target reps at RPE ≤ 7 in the last two sessions → suggest +5 lb
- * (+2.5 kg)". The reason is always shown; nothing changes automatically.
- * Pure + unit-tested.
+ * Progression engine — two complementary systems:
+ *
+ *  1. Double-progression target (new, primary): looks at whether all sets were
+ *     completed last session. If yes → bump weight by one increment. If not →
+ *     hold at the same weight. Fires every session so you always see a target.
+ *
+ *  2. RPE auto-regulation (legacy): requires RPE ≤ 7 across two sessions.
+ *     Still computed in the background; kept for backward compat.
+ *
+ * Both are pure functions, unit-testable, with no side effects.
  */
+
+// ---------------------------------------------------------------------------
+// Double-progression target (primary)
+// ---------------------------------------------------------------------------
+
+export type ProgressionStatus = 'first_time' | 'progress' | 'maintain';
+
+export interface ProgressionTarget {
+  status: ProgressionStatus;
+  /** The weight to aim for today. */
+  weight: number | null;
+  /** Representative reps from last session (median of completed working sets). */
+  reps: number | null;
+  /** Short label shown on the chip, e.g. "↑ 102.5 kg" or "→ 100 kg". */
+  label: string;
+  /** One-line plain-English explanation. */
+  detail: string;
+}
+
+/**
+ * Compute the next-session target from the last session's sets.
+ * Rule: all working sets completed → progress (weight + increment).
+ *       Any incomplete → maintain (same weight, hit them all first).
+ *       No prior data → first_time.
+ */
+export function computeProgressionTarget(
+  lastSets: readonly { weight: number; reps: number; is_warmup: boolean; is_completed: boolean }[],
+  unit: Units,
+): ProgressionTarget {
+  const working = lastSets.filter((s) => !s.is_warmup);
+  if (working.length === 0) {
+    return { status: 'first_time', weight: null, reps: null, label: 'First time', detail: '' };
+  }
+
+  const completed = working.filter((s) => s.is_completed);
+  if (completed.length === 0) {
+    return { status: 'first_time', weight: null, reps: null, label: 'First time', detail: '' };
+  }
+
+  const maxWeight = Math.max(...completed.map((s) => s.weight));
+  const medianReps = Math.round(
+    completed.reduce((sum, s) => sum + s.reps, 0) / completed.length,
+  );
+  const inc = defaultIncrement(unit);
+  const allDone = completed.length === working.length;
+
+  if (allDone) {
+    const next = maxWeight + inc;
+    return {
+      status: 'progress',
+      weight: next,
+      reps: medianReps,
+      label: `↑ ${next} ${unit}`,
+      detail: `All ${working.length} set${working.length !== 1 ? 's' : ''} complete last time — add ${inc} ${unit}`,
+    };
+  }
+
+  return {
+    status: 'maintain',
+    weight: maxWeight,
+    reps: medianReps,
+    label: `→ ${maxWeight} ${unit}`,
+    detail: `${completed.length} of ${working.length} sets complete last time — hit all sets to progress`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// RPE auto-regulation (legacy — kept for backward compat)
+// ---------------------------------------------------------------------------
 
 export const RPE_EASY_THRESHOLD = 7;
 

@@ -10,6 +10,7 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useRestTimer } from '../hooks/useRestTimer';
 import { evaluateSet, type BeatEvaluation, type ComparableSet } from '../lib/beatLastTime';
 import type { AutoRegResult } from '../lib/autoRegulation';
+import { computeProgressionTarget } from '../lib/autoRegulation';
 import { filterExercises } from '../lib/exerciseSearch';
 import { titleCase } from '../lib/labels';
 import type {
@@ -520,7 +521,7 @@ function ExerciseBlock({
   return (
     <div className="rounded-panel border border-line bg-surface p-4 shadow-panel">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="truncate font-semibold">{item.exercise?.name ?? 'Exercise'}</div>
           <LastTimeRow last={last} />
         </div>
@@ -557,11 +558,23 @@ function ExerciseBlock({
         </div>
       </div>
 
-      {suggestion?.suggest && suggestion.reason && (
-        <div className="mt-3  border border-beat/30 bg-beat/5 px-3 py-2 text-xs text-beat">
-          💡 {suggestion.reason}
-        </div>
-      )}
+      {!isCardio && (() => {
+        const target = computeProgressionTarget(last?.sets ?? [], settings.units);
+        if (target.status === 'first_time') return null;
+        const isProgress = target.status === 'progress';
+        return (
+          <div
+            className={`mt-3 flex items-center justify-between gap-3 rounded-tile px-3 py-2 ${
+              isProgress
+                ? 'border border-accent/30 bg-accent/8 text-accent'
+                : 'border border-hairline bg-surface2 text-ink2'
+            }`}
+          >
+            <span className="text-[12px] font-extrabold tabular-nums">{target.label}</span>
+            <span className="text-[10.5px] leading-snug opacity-80">{target.detail}</span>
+          </div>
+        );
+      })()}
 
       {isCardio ? (
         <>
