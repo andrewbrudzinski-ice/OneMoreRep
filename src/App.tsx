@@ -27,6 +27,7 @@ import { ProgressScreen } from './screens/ProgressScreen';
 import { ExerciseHistoryScreen } from './screens/ExerciseHistoryScreen';
 import { WorkoutSummaryScreen } from './screens/WorkoutSummaryScreen';
 import { BodyweightScreen } from './screens/BodyweightScreen';
+import { MesocycleScreen } from './screens/MesocycleScreen';
 
 const router = createBrowserRouter([
   {
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
       { path: 'more/settings', element: <SettingsScreen /> },
       { path: 'more/data', element: <DataScreen /> },
       { path: 'more/methodology', element: <MethodologyScreen /> },
+      { path: 'more/mesocycles', element: <MesocycleScreen /> },
       { path: 'history/:exerciseId', element: <ExerciseHistoryScreen /> },
       { path: 'bodyweight', element: <BodyweightScreen /> },
     ],

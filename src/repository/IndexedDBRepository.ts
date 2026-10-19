@@ -12,6 +12,7 @@ import {
   type Meal,
   type MealItem,
   type MealType,
+  type Mesocycle,
   type MuscleGroup,
   type NutritionLog,
   type PersonalRecord,
@@ -58,6 +59,7 @@ import type {
   WorkoutSummaryData,
   WorkoutHistoryEntry,
   WeeklyStats,
+  NewMesocycleInput,
 } from './Repository';
 import { bestE1RM, epley1RM, workingVolume } from '../lib/beatLastTime';
 import { detectPRs, exercisePRCandidates } from '../lib/prDetection';
@@ -1657,6 +1659,42 @@ export class IndexedDBRepository implements Repository {
       }
     }
     return latest?.rest ?? null;
+  }
+
+  async getMesocycles(): Promise<Mesocycle[]> {
+    const all = await this.db.mesocycles.toArray();
+    return all.sort((a, b) => b.start_date.localeCompare(a.start_date));
+  }
+
+  async getActiveMesocycle(): Promise<Mesocycle | null> {
+    const today = todayDateString();
+    const all = await this.db.mesocycles.toArray();
+    for (const m of all) {
+      const end = addDays(m.start_date, m.weeks * 7);
+      if (m.start_date <= today && today < end) return m;
+    }
+    return null;
+  }
+
+  async createMesocycle(input: NewMesocycleInput): Promise<Mesocycle> {
+    const ts = nowISO();
+    const record: Mesocycle = {
+      id: newId(),
+      user_id: LOCAL_USER_ID,
+      name: input.name,
+      start_date: input.start_date,
+      weeks: input.weeks,
+      deload_week: input.deload_week,
+      notes: input.notes ?? null,
+      created_at: ts,
+      updated_at: ts,
+    };
+    await this.db.mesocycles.add(record);
+    return record;
+  }
+
+  async deleteMesocycle(id: string): Promise<void> {
+    await this.db.mesocycles.delete(id);
   }
 }
 
