@@ -8,6 +8,7 @@ import type {
   Meal,
   MealItem,
   MealType,
+  Mesocycle,
   MuscleGroup,
   NutritionLog,
   PersonalRecord,
@@ -197,6 +198,20 @@ export interface Repository {
   getProgressionSuggestion(exerciseId: string, targetReps?: number): Promise<AutoRegResult>;
   /** The rest duration last used for an exercise (per-exercise memory). */
   getLastRestSeconds(exerciseId: string): Promise<number | null>;
+
+  // --- Mesocycles ----------------------------------------------------------
+  getMesocycles(): Promise<Mesocycle[]>;
+  getActiveMesocycle(): Promise<Mesocycle | null>;
+  createMesocycle(input: NewMesocycleInput): Promise<Mesocycle>;
+  deleteMesocycle(id: string): Promise<void>;
+}
+
+export interface NewMesocycleInput {
+  name: string;
+  start_date: DateString;
+  weeks: number;
+  deload_week: boolean;
+  notes?: string | null;
 }
 
 /** Record fields the caller never sets directly (managed by the repository). */

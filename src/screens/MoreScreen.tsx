@@ -14,8 +14,9 @@ interface MenuItem {
 const ITEMS: MenuItem[] = [
   { label: 'Workout History', note: 'Browse & edit past sessions', to: '/more/history' },
   { label: 'Exercise Database', note: 'Browse, search & add custom exercises', to: '/more/exercises' },
+  { label: 'Mesocycles', note: 'Plan structured 4-6 week training blocks', to: '/more/mesocycles' },
   { label: 'Settings', note: 'Targets, units, rest timer, goal', to: '/more/settings' },
-  { label: 'How it’s calculated', note: 'Readiness, 1RM, PRs & every other number', to: '/more/methodology' },
+  { label: "How it's calculated", note: 'Readiness, 1RM, PRs & every other number', to: '/more/methodology' },
   { label: 'Export / Import', note: 'Back up and restore your data (JSON)', to: '/more/data' },
   { label: 'About', note: 'OneMoreRep · local-first fitness tracker', action: 'about' },
 ];
@@ -89,7 +90,7 @@ export function MoreScreen() {
             </p>
             <p className="text-xs text-ink3">
               Curious how the numbers work? See{' '}
-              <span className="font-medium text-ink2">How it’s calculated</span> in the menu for
+              <span className="font-medium text-ink2">How it's calculated</span> in the menu for
               every formula.
             </p>
           </div>

@@ -16,9 +16,11 @@ import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
 import { computeImbalances } from '../lib/muscleImbalance';
 import type { ImbalanceSeverity, BalanceBar } from '../lib/muscleImbalance';
+import { addDays, dayDiff } from '../lib/dates';
+import { todayDateString } from '../lib/id';
 import type { ReadinessLevel } from '../lib/readiness';
 import type { MuscleHeatmapCell, ProgressStats } from '../repository/Repository';
-import type { Exercise, PersonalRecord, Settings } from '../types';
+import type { Exercise, Mesocycle, PersonalRecord, Settings } from '../types';
 
 const LEVEL_META: Record<ReadinessLevel, { word: string; color: string }> = {
   fresh: { word: 'PRIMED', color: '#8FE81E' },
@@ -33,7 +35,7 @@ export function ProgressScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const state = useAsync(async () => {
-    const [prs, exercises, settings, stats, readiness, heatmap, history, muscleTotals] = await Promise.all([
+    const [prs, exercises, settings, stats, readiness, heatmap, history, muscleTotals, activeMeso] = await Promise.all([
       repository.getPersonalRecords(),
       repository.getExercises({ includeArchived: true }),
       repository.getSettings(),
@@ -42,8 +44,9 @@ export function ProgressScreen() {
       repository.getMuscleHeatmap(),
       repository.getWorkoutHistory(),
       repository.getMuscleTotals(4),
+      repository.getActiveMesocycle(),
     ]);
-    return { prs, exercises, settings, stats, readiness, heatmap, history, muscleTotals };
+    return { prs, exercises, settings, stats, readiness, heatmap, history, muscleTotals, activeMeso };
   }, []);
 
   const p = useAnimationProgress(state.data);
@@ -75,7 +78,7 @@ export function ProgressScreen() {
   if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
   if (state.loading || !state.data) return <Spinner />;
 
-  const { prs, settings, stats, readiness, heatmap, muscleTotals } = state.data;
+  const { prs, settings, stats, readiness, heatmap, muscleTotals, activeMeso } = state.data;
   const imbalances = computeImbalances(muscleTotals);
   const unit = settings.units;
   const nothingYet = prs.length === 0 && stats.totalWorkouts === 0;
@@ -109,6 +112,9 @@ export function ProgressScreen() {
               {readiness.suggestion}
             </p>
           </Panel>
+
+          {/* Active mesocycle — compact panel */}
+          {activeMeso && <ActiveMesoPanel meso={activeMeso} navigate={navigate} />}
 
           {/* Consistency — open section */}
           <section className="pt-1">
@@ -321,6 +327,56 @@ function MacroConsistency({ stats }: { stats: ProgressStats }) {
         <p className="mt-2 text-[11.5px] text-ink3">Log food to track adherence.</p>
       )}
     </section>
+  );
+}
+
+function ActiveMesoPanel({ meso, navigate }: { meso: Mesocycle; navigate: ReturnType<typeof useNavigate> }) {
+  const today = todayDateString();
+  const elapsed = dayDiff(today, meso.start_date);
+  const weekIdx = Math.min(Math.floor(elapsed / 7), meso.weeks - 1);
+  const isDeload = meso.deload_week && weekIdx === meso.weeks - 1;
+  const endDate = addDays(meso.start_date, meso.weeks * 7);
+  const daysLeft = dayDiff(endDate, today);
+
+  return (
+    <Panel className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <PanelHeader label="Active block" />
+        <button
+          onClick={() => navigate('/more/mesocycles')}
+          className="text-[11.5px] text-ink3 hover:text-ink"
+        >
+          All blocks →
+        </button>
+      </div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="text-[15px] font-extrabold text-ink">{meso.name}</span>
+        {isDeload && (
+          <span className="rounded-full border border-[#F2B33D]/40 bg-[#F2B33D]/10 px-2 py-0.5 text-[10px] font-bold text-[#F2B33D]">
+            Deload
+          </span>
+        )}
+      </div>
+      <p className="mt-0.5 text-[11.5px] text-ink3">
+        Week {weekIdx + 1} of {meso.weeks} · {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining
+      </p>
+      <div className="mt-3 flex gap-1">
+        {Array.from({ length: meso.weeks }, (_, i) => (
+          <div
+            key={i}
+            className={`h-[5px] flex-1 rounded-full ${
+              i < weekIdx
+                ? 'bg-accent/40'
+                : i === weekIdx
+                  ? 'bg-accent'
+                  : meso.deload_week && i === meso.weeks - 1
+                    ? 'bg-[#F2B33D]/25'
+                    : 'bg-surface2'
+            }`}
+          />
+        ))}
+      </div>
+    </Panel>
   );
 }
 

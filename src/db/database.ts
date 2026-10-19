@@ -6,6 +6,7 @@ import type {
   FoodEntry,
   Meal,
   MealItem,
+  Mesocycle,
   MuscleGroup,
   NutritionLog,
   PersonalRecord,
@@ -43,6 +44,7 @@ export class FitnessDB extends Dexie {
   nutrition_logs!: Table<NutritionLog, string>;
   body_weight_entries!: Table<BodyWeightEntry, string>;
   food_entries!: Table<FoodEntry, string>;
+  mesocycles!: Table<Mesocycle, string>;
 
   constructor(name = 'onemorerep') {
     super(name);
@@ -67,6 +69,11 @@ export class FitnessDB extends Dexie {
       food_entries: 'id, nutrition_log_id, food_id, meal_type',
       body_weight_entries: 'id, user_id, date',
     });
+
+    // Version 2 — add mesocycles (structured training blocks).
+    this.version(2).stores({
+      mesocycles: 'id, user_id, start_date',
+    });
   }
 }
 
@@ -88,6 +95,7 @@ export const STORE_NAMES = [
   'nutrition_logs',
   'food_entries',
   'body_weight_entries',
+  'mesocycles',
 ] as const;
 
 export type StoreName = (typeof STORE_NAMES)[number];

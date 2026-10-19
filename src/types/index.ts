@@ -157,6 +157,21 @@ export interface WorkoutSet extends BaseRecord {
 }
 
 // ---------------------------------------------------------------------------
+// Mesocycles (structured training blocks)
+// ---------------------------------------------------------------------------
+
+export interface Mesocycle extends BaseRecord {
+  name: string;
+  /** YYYY-MM-DD start date of the block. */
+  start_date: DateString;
+  /** Total duration in weeks (4–6). */
+  weeks: number;
+  /** Whether the final week is a planned deload. */
+  deload_week: boolean;
+  notes: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Personal records (derived + cached)
 // ---------------------------------------------------------------------------
 
