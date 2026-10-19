@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Spinner } from '../components/ui';
 import { ScreenHeader, PageBody } from '../components/ScreenHeader';
@@ -9,6 +9,7 @@ import { formatDuration } from '../hooks/useElapsedSeconds';
 import { formatDecimal, formatLongDate, formatNumber, PR_TYPE_LABELS } from '../lib/format';
 import type { VsLastTone } from '../lib/workoutSummary';
 import { computeBeatStats, generateRecap } from '../lib/workoutRecap';
+import { generateWorkoutCard, shareOrDownloadCard } from '../lib/shareCard';
 import type { Settings, WorkoutSet } from '../types';
 
 const TONE_CLASSES: Record<VsLastTone, string> = {
@@ -25,6 +26,7 @@ export function WorkoutSummaryScreen() {
   const repository = useRepository();
   const navigate = useNavigate();
   const { workoutId = '' } = useParams();
+  const [sharing, setSharing] = useState(false);
 
   const state = useAsync(async () => {
     const [summary, settings, detail] = await Promise.all([
@@ -71,6 +73,40 @@ export function WorkoutSummaryScreen() {
 
   const unit = settings.units;
   const date = summary.workout.completed_at ?? summary.workout.started_at;
+
+  async function handleShare() {
+    if (!detail) return;
+    setSharing(true);
+    try {
+      const exercises = detail.exercises.slice(0, 5).map((item) => {
+        const best = item.sets
+          .filter((s) => s.is_completed && !s.is_warmup)
+          .sort((a, b) => b.weight - a.weight)[0];
+        return {
+          name: item.exercise?.name ?? 'Exercise',
+          setLabel: best ? `${best.weight} ${unit} × ${best.reps}` : '–',
+        };
+      });
+      const blob = await generateWorkoutCard({
+        workoutName: summary.workout.name,
+        dateLabel: formatLongDate(date),
+        duration: formatDuration(summary.workout.duration_seconds ?? 0),
+        sets: summary.workingSetCount,
+        volume: Math.round(summary.totalVolume),
+        unit,
+        exercises,
+        prs: summary.newPRs.map((pr) => ({
+          typeLabel: PR_TYPE_LABELS[pr.pr_type],
+          valueLabel: formatPrValue(pr.pr_type, pr.value, unit),
+        })),
+        recap,
+      });
+      const filename = `${summary.workout.name.replace(/[^a-z0-9]/gi, '-')}.png`;
+      await shareOrDownloadCard(blob, filename);
+    } finally {
+      setSharing(false);
+    }
+  }
 
   return (
     <>
@@ -218,6 +254,14 @@ export function WorkoutSummaryScreen() {
               View progress
             </Button>
           </div>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={handleShare}
+            disabled={sharing}
+          >
+            {sharing ? 'Generating card…' : 'Share workout card'}
+          </Button>
         </div>
       </PageBody>
     </>
