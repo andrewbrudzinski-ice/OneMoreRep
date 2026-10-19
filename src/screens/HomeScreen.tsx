@@ -281,7 +281,9 @@ function DailyQuoteCard() {
       <div className="mt-0.5 w-[3px] shrink-0 rounded-full bg-accent/50" />
       <div className="min-w-0">
         <p className="text-[13.5px] leading-relaxed text-ink">{text}</p>
-        <p className="mt-2 text-[11px] font-semibold text-ink3">{author}</p>
+        {author !== 'Unknown' && (
+          <p className="mt-2 text-[11px] font-semibold text-ink3">{author}</p>
+        )}
       </div>
     </div>
   );
