@@ -121,6 +121,7 @@ export class IndexedDBRepository implements Repository {
       ...settings,
       beat_comparison_enabled: settings.beat_comparison_enabled ?? true,
       beat_lookback_weeks: settings.beat_lookback_weeks ?? 3,
+      show_daily_quote: settings.show_daily_quote ?? true,
     };
   }
 
