@@ -191,6 +191,8 @@ export interface Repository {
   getReadiness(): Promise<ReadinessResult>;
   /** Weekly per-muscle working volume for the heatmap. */
   getMuscleHeatmap(): Promise<MuscleHeatmapCell[]>;
+  /** Per-muscle working volume summed over the last `weeks` weeks. */
+  getMuscleTotals(weeks: number): Promise<Array<{ muscleGroupId: string; name: string; volume: number }>>;
   /** RPE auto-regulation suggestion for an exercise (transparent rule). */
   getProgressionSuggestion(exerciseId: string, targetReps?: number): Promise<AutoRegResult>;
   /** The rest duration last used for an exercise (per-exercise memory). */

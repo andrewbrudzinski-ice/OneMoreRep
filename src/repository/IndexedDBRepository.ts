@@ -1582,6 +1582,33 @@ export class IndexedDBRepository implements Repository {
       .sort((a, b) => b.volume - a.volume);
   }
 
+  async getMuscleTotals(weeks: number): Promise<Array<{ muscleGroupId: string; name: string; volume: number }>> {
+    const today = todayDateString();
+    const cutoff = weeks * 7;
+    const completed = (await this.db.workouts.toArray()).filter(
+      (w) => w.completed_at !== null && dayDiff(today, (w.completed_at ?? '').slice(0, 10)) < cutoff,
+    );
+
+    const totals = new Map<string, number>();
+    for (const w of completed) {
+      const wex = await this.db.workout_exercises.where('workout_id').equals(w.id).toArray();
+      for (const row of wex) {
+        const exercise = await this.db.exercises.get(row.exercise_id);
+        if (!exercise) continue;
+        const sets = await this.db.sets.where('workout_exercise_id').equals(row.id).toArray();
+        let vol = 0;
+        for (const s of sets) if (!s.is_warmup && s.is_completed) vol += s.weight * s.reps;
+        if (vol <= 0) continue;
+        totals.set(exercise.primary_muscle_group_id, (totals.get(exercise.primary_muscle_group_id) ?? 0) + vol);
+      }
+    }
+
+    const groups = await this.db.muscle_groups.toArray();
+    return groups
+      .map((g) => ({ muscleGroupId: g.id, name: g.name, volume: Math.round(totals.get(g.id) ?? 0) }))
+      .filter((g) => g.volume > 0);
+  }
+
   async getProgressionSuggestion(exerciseId: string, targetReps = 8): Promise<AutoRegResult> {
     const settings = await this.getSettings();
     const rows = await this.db.workout_exercises.where('exercise_id').equals(exerciseId).toArray();
