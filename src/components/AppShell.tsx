@@ -89,7 +89,7 @@ const TABS: TabDef[] = [
 export function AppShell() {
   const location = useLocation();
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
+    <div className="flex h-full flex-col md:flex-row">
       {/* Sidebar (desktop) */}
       <aside className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:border-r md:border-hairline md:bg-ground md:p-4">
         <div className="mb-8 flex items-center gap-2 px-2">
@@ -120,8 +120,8 @@ export function AppShell() {
         </nav>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 pb-24 md:pb-0">
+      {/* Main content — scrolls independently so the bottom nav never moves */}
+      <main className="flex-1 overflow-y-auto md:overflow-y-auto">
         {/* key on pathname so each screen replays the enter transition */}
         <div key={location.pathname} className="screen-enter">
           <Outlet />
@@ -129,9 +129,11 @@ export function AppShell() {
       </main>
 
       {/* Bottom tab bar (mobile) — frosted glass, hairline top, active tab
-          lifted onto a soft accent chip with a top accent bar. */}
+          lifted onto a soft accent chip with a top accent bar.
+          Not fixed — sits naturally at the bottom of the flex column so it
+          never shifts as browser chrome appears/disappears. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1.5 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
+        className="shrink-0 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1.5 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {TABS.map((tab) => (
