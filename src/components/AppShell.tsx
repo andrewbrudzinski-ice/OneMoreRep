@@ -121,20 +121,22 @@ export function AppShell() {
       </aside>
 
       {/* Main content — min-h-0 overrides flex's min-height:auto so this
-          actually shrinks and scrolls instead of expanding past the viewport */}
-      <main className="min-h-0 flex-1 overflow-y-auto">
+          actually shrinks and scrolls instead of expanding past the viewport.
+          pb accounts for the fixed nav height + safe area so content is never
+          hidden behind the bar. md:pb-0 resets it on desktop (no bottom nav). */}
+      <main className="min-h-0 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+3.5rem)] md:pb-0">
         {/* key on pathname so each screen replays the enter transition */}
         <div key={location.pathname} className="screen-enter">
           <Outlet />
         </div>
       </main>
 
-      {/* Bottom tab bar (mobile) — frosted glass, hairline top, active tab
-          lifted onto a soft accent chip with a top accent bar.
-          Not fixed — sits naturally at the bottom of the flex column so it
-          never shifts as browser chrome appears/disappears. */}
+      {/* Bottom tab bar (mobile) — fixed to viewport bottom so its background
+          fills all the way to the physical screen edge (including the iOS home
+          indicator safe area). overflow:hidden on body/html prevents body-level
+          scrolling, so the fixed bar never shifts between screens. */}
       <nav
-        className="shrink-0 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1.5 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1.5 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {TABS.map((tab) => (
