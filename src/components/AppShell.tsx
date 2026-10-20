@@ -120,8 +120,9 @@ export function AppShell() {
         </nav>
       </aside>
 
-      {/* Main content — scrolls independently so the bottom nav never moves */}
-      <main className="flex-1 overflow-y-auto md:overflow-y-auto">
+      {/* Main content — min-h-0 overrides flex's min-height:auto so this
+          actually shrinks and scrolls instead of expanding past the viewport */}
+      <main className="min-h-0 flex-1 overflow-y-auto">
         {/* key on pathname so each screen replays the enter transition */}
         <div key={location.pathname} className="screen-enter">
           <Outlet />
