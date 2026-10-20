@@ -89,7 +89,7 @@ const TABS: TabDef[] = [
 export function AppShell() {
   const location = useLocation();
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="flex h-full flex-col overflow-hidden md:flex-row">
       {/* Sidebar (desktop) */}
       <aside className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:border-r md:border-hairline md:bg-ground md:p-4">
         <div className="mb-8 flex items-center gap-2 px-2">
