@@ -1432,6 +1432,14 @@ export class IndexedDBRepository implements Repository {
       activityLast14.push(daySet.has(addDays(today, -i)) ? 1 : 0);
     }
 
+    // Raw working volume for the last 7 days (no muscle-group attribution).
+    let weeklyVolume = 0;
+    for (const w of completed) {
+      const day = (w.completed_at ?? '').slice(0, 10);
+      if (!day || dayDiff(today, day) < 0 || dayDiff(today, day) >= 7) continue;
+      weeklyVolume += await this.computeWorkoutVolume(w.id);
+    }
+
     // Macro consistency over the last 7 days.
     let daysLogged = 0;
     let proteinMet = 0;
@@ -1455,6 +1463,7 @@ export class IndexedDBRepository implements Repository {
       longestStreak: longestStreak(workoutDays),
       workoutsThisWeek: countInLastDays(workoutDays, 7, today),
       totalWorkouts: completed.length,
+      weeklyVolume: Math.round(weeklyVolume),
       activityLast14,
       macroConsistency: { daysLogged, proteinMet, calorieMet },
     };
