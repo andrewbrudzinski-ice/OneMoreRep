@@ -32,10 +32,10 @@ export function MethodologyScreen() {
         <Method title="Training readiness" formula="index = 100 − fatigue penalties">
           A 0–100 read on how recovered you are, from three signals in your log. Starting at 100, it
           subtracts penalties for a longer <B>training streak</B> (steeper as it grows — a 2-day
-          streak −14, 3-day −26, 4-day −36, and up from there), for <B>muscle groups trained two
+          streak −6, 3-day −16, 4-day −28, and up from there), for <B>muscle groups trained two
           days running</B> (−8 each), and for <B>rising working volume</B> vs your prior sessions
           (−8; easing off adds a little back). The result is clamped to 5–100:{' '}
-          <B>85+ Primed</B>, <B>55–84 Moderate</B>, under <B>55 Fatigued</B>. It’s a rough read from
+          <B>93+ Primed</B>, <B>57–92 Moderate</B>, under <B>57 Fatigued</B>. It’s a rough read from
           your training log — not medical or recovery-science advice.
         </Method>
 
