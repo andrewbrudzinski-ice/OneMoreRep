@@ -888,7 +888,7 @@ export const EXERCISE_SEED: ExerciseSeed[] = [
     is_compound: false,
   },
   {
-    id: 'ex-cable-kickback',
+    id: 'ex-cable-tricep-kickback',
     name: 'Cable Tricep Kickback',
     primary: 'mg-triceps',
     equipment: 'cable',

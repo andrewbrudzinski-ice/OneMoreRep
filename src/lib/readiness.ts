@@ -102,9 +102,11 @@ export function computeReadiness(input: ReadinessInput): ReadinessResult {
   const index = clamp(Math.round(100 - penalty), 5, 100);
 
   // Thresholds chosen so the index and the qualitative level always agree.
+  // fresh ≥ 93: requires near-zero penalty (≤ 1 consecutive day, flat/down volume).
+  // fatigued < 57: needs ≥ 4 consecutive days or a combination of streak + other signals.
   let level: ReadinessLevel;
-  if (index >= 85) level = 'fresh';
-  else if (index >= 55) level = 'moderate';
+  if (index >= 93) level = 'fresh';
+  else if (index >= 57) level = 'moderate';
   else level = 'fatigued';
 
   const suggestion =
