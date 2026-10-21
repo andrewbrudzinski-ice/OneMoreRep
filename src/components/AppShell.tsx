@@ -124,7 +124,7 @@ export function AppShell() {
           actually shrinks and scrolls instead of expanding past the viewport.
           pb accounts for the fixed nav height + safe area so content is never
           hidden behind the bar. md:pb-0 resets it on desktop (no bottom nav). */}
-      <main className="min-h-0 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+3.5rem)] md:pb-0">
+      <main className="min-h-0 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+3rem)] md:pb-0">
         {/* key on pathname so each screen replays the enter transition */}
         <div key={location.pathname} className="screen-enter">
           <Outlet />
@@ -136,8 +136,8 @@ export function AppShell() {
           indicator safe area). overflow:hidden on body/html prevents body-level
           scrolling, so the fixed bar never shifts between screens. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1.5 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 gap-1 border-t border-white/[0.07] bg-ground/75 px-2 pt-1 shadow-[0_-1px_20px_0_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 md:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {TABS.map((tab) => (
           <NavLink
