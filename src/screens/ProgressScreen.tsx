@@ -81,7 +81,6 @@ export function ProgressScreen() {
     const prs = state.data?.prs ?? [];
     const muscleTotals = state.data?.muscleTotals ?? [];
     const stats = state.data?.stats;
-    const heatmap = state.data?.heatmap ?? [];
     const unit = state.data?.settings.units ?? 'lbs';
     const imbalances = computeImbalances(muscleTotals);
     const today = todayDateString();
@@ -95,10 +94,18 @@ export function ProgressScreen() {
     const topMuscle = muscleTotals.length > 0
       ? muscleTotals.reduce((a, b) => (b.volume > a.volume ? b : a)).name
       : null;
+    // Count sessions only within this calendar week (Mon → today) so the
+    // count matches the "Mon – Sun" date label in the digest header.
+    const activity = stats?.activityLast14 ?? [];
+    const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
+    const daysSinceMonday = (dow + 6) % 7;
+    const workoutsThisCalendarWeek = activity
+      .slice(Math.max(0, 14 - daysSinceMonday - 1))
+      .reduce((s, v) => s + v, 0);
     return generateWeeklyDigest({
-      workoutsThisWeek: stats?.workoutsThisWeek ?? 0,
+      workoutsThisWeek: workoutsThisCalendarWeek,
       currentStreak: stats?.currentStreak ?? 0,
-      volume: Math.round(heatmap.reduce((sum, c) => sum + c.volume, 0)),
+      volume: stats?.weeklyVolume ?? 0,
       unit,
       imbalances,
       topMuscleName: topMuscle,

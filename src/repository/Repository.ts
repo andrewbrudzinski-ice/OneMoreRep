@@ -504,6 +504,8 @@ export interface ProgressStats {
   longestStreak: number;
   workoutsThisWeek: number;
   totalWorkouts: number;
+  /** Raw working volume (weight × reps, no muscle-group attribution) for the last 7 days. */
+  weeklyVolume: number;
   /** 0/1 per day for the last 14 days (oldest→newest). */
   activityLast14: number[];
   macroConsistency: {
