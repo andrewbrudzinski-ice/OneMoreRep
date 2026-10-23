@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ScreenHeader, PageBody } from '../components/ScreenHeader';
 import { Panel } from '../components/primitives';
 import {
   Button,
   EmptyState,
-  Modal,
   SelectField,
   Spinner,
   Stepper,
@@ -14,7 +13,7 @@ import {
 } from '../components/ui';
 import { useRepository } from '../repository/repositoryContext';
 import { useAsync } from '../hooks/useAsync';
-import { filterExercises } from '../lib/exerciseSearch';
+import { ExercisePicker } from '../components/ExercisePicker';
 import { moveDown, moveUp } from '../lib/order';
 import { DAY_NAMES } from '../lib/labels';
 import type { DayOfWeek, Exercise } from '../types';
@@ -274,49 +273,3 @@ function RoutineExerciseCard({
   );
 }
 
-function ExercisePicker({
-  onPick,
-  onClose,
-}: {
-  onPick: (exercise: Exercise) => void;
-  onClose: () => void;
-}) {
-  const repository = useRepository();
-  const [query, setQuery] = useState('');
-  const state = useAsync(() => repository.getExercises(), []);
-
-  const results = useMemo(
-    () => filterExercises(state.data ?? [], { query }),
-    [state.data, query],
-  );
-
-  return (
-    <Modal title="Add exercise" onClose={onClose}>
-      <div className="space-y-3">
-        <TextField
-          placeholder="Search…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          autoFocus
-          aria-label="Search exercises to add"
-        />
-        {state.loading ? (
-          <Spinner />
-        ) : (
-          <ul className="max-h-[50vh] divide-y divide-hairline overflow-y-auto">
-            {results.map((ex) => (
-              <li key={ex.id}>
-                <button
-                  onClick={() => onPick(ex)}
-                  className="w-full px-1 py-3 text-left text-ink hover:bg-white/[0.03]"
-                >
-                  {ex.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </Modal>
-  );
-}
