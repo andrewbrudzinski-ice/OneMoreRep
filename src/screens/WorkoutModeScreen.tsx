@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Modal, Spinner, TextField } from '../components/ui';
+import { Button, Modal, Spinner } from '../components/ui';
+import { ExercisePicker } from '../components/ExercisePicker';
 import { BeatBadge } from '../components/BeatBadge';
 import { PlateCalculatorPanel } from '../components/PlateCalculatorPanel';
 import { useRepository } from '../repository/repositoryContext';
@@ -11,8 +12,6 @@ import { useRestTimer } from '../hooks/useRestTimer';
 import { evaluateSet, type BeatEvaluation, type ComparableSet } from '../lib/beatLastTime';
 import type { AutoRegResult } from '../lib/autoRegulation';
 import { computeProgressionTarget } from '../lib/autoRegulation';
-import { filterExercises } from '../lib/exerciseSearch';
-import { titleCase } from '../lib/labels';
 import type {
   LastSession,
   WorkoutDetail,
@@ -983,49 +982,6 @@ function TimerButton({ onClick, children }: { onClick: () => void; children: str
   );
 }
 
-function ExercisePicker({
-  onPick,
-  onClose,
-}: {
-  onPick: (exercise: Exercise) => void;
-  onClose: () => void;
-}) {
-  const repository = useRepository();
-  const [query, setQuery] = useState('');
-  const state = useAsync(() => repository.getExercises(), []);
-  const results = useMemo(() => filterExercises(state.data ?? [], { query }), [state.data, query]);
-
-  return (
-    <Modal title="Add exercise" onClose={onClose}>
-      <div className="space-y-3">
-        <TextField
-          placeholder="Search…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          autoFocus
-          aria-label="Search exercises"
-        />
-        {state.loading ? (
-          <Spinner />
-        ) : (
-          <ul className="max-h-[50vh] divide-y divide-hairline overflow-y-auto">
-            {results.map((ex) => (
-              <li key={ex.id}>
-                <button
-                  onClick={() => onPick(ex)}
-                  className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-white/[0.03]"
-                >
-                  <span className="text-ink">{ex.name}</span>
-                  <span className="text-xs text-ink3">{titleCase(ex.equipment)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </Modal>
-  );
-}
 
 function TimerModal({ onStart, onClose }: { onStart: (seconds: number) => void; onClose: () => void }) {
   const [minutes, setMinutes] = useState(2);
