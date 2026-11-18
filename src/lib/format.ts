@@ -15,13 +15,13 @@ export function formatDecimal(n: number): string {
 
 /** Short calendar date, e.g. "Jan 15". */
 export function formatShortDate(iso: string): string {
-  const d = new Date(iso);
+  const d = new Date(iso.includes('T') ? iso : `${iso}T00:00:00`);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /** Longer date with year, e.g. "Jan 15, 2026". */
 export function formatLongDate(iso: string): string {
-  const d = new Date(iso);
+  const d = new Date(iso.includes('T') ? iso : `${iso}T00:00:00`);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 

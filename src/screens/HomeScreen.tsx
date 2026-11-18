@@ -22,7 +22,9 @@ import { useAnimationProgress } from '../hooks/useAnimationProgress';
 import { todayDateString } from '../lib/id';
 import { formatDecimal, formatNumber, PR_TYPE_LABELS } from '../lib/format';
 import { getDailyQuote } from '../lib/dailyQuote';
+import { dayLabel } from '../lib/labels';
 import type { DashboardData } from '../repository/Repository';
+import type { Routine } from '../types';
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -30,6 +32,7 @@ export function HomeScreen() {
   const repository = useRepository();
   const navigate = useNavigate();
   const [weighIn, setWeighIn] = useState(false);
+  const [pickingRoutine, setPickingRoutine] = useState(false);
 
   const state = useAsync<DashboardData>(() => repository.getDashboardData(), []);
 
@@ -41,6 +44,11 @@ export function HomeScreen() {
 
   // One shared 0→1 pass drives every counting number, bar, and the ring in sync.
   const p = useAnimationProgress(state.data);
+
+  async function startFromRoutine(routine: Routine) {
+    const workout = await repository.startWorkout({ name: routine.name, routine_id: routine.id });
+    navigate(`/session/${workout.id}`);
+  }
 
   async function startSuggested() {
     const data = state.data;
@@ -117,7 +125,7 @@ export function HomeScreen() {
             label={d.activeWorkout ? 'Session in progress' : "Today's workout"}
             action={
               !d.activeWorkout && d.suggestedRoutine ? (
-                <PanelAction onClick={() => navigate('/workout')}>Change</PanelAction>
+                <PanelAction onClick={() => setPickingRoutine(true)}>Change</PanelAction>
               ) : undefined
             }
           />
@@ -253,6 +261,16 @@ export function HomeScreen() {
           <ChevronRight />
         </button>
       </PageBody>
+
+      {pickingRoutine && (
+        <RoutinePickerModal
+          onClose={() => setPickingRoutine(false)}
+          onStart={(routine) => {
+            setPickingRoutine(false);
+            startFromRoutine(routine);
+          }}
+        />
+      )}
 
       {weighIn && (
         <WeighInModal
@@ -509,6 +527,51 @@ function WeighInModal({
         autoFocus
       />
       <p className="mt-2 text-xs text-ink3">Logs today’s weigh-in (replaces an existing one).</p>
+    </Modal>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Routine picker modal                                                        */
+/* -------------------------------------------------------------------------- */
+
+function RoutinePickerModal({
+  onClose,
+  onStart,
+}: {
+  onClose: () => void;
+  onStart: (routine: Routine) => void;
+}) {
+  const repository = useRepository();
+  const state = useAsync(() => repository.getRoutines(), []);
+  const routines = state.data ?? [];
+
+  return (
+    <Modal title="Choose routine" onClose={onClose}>
+      {state.loading ? (
+        <Spinner />
+      ) : routines.length === 0 ? (
+        <p className="text-sm text-ink3">No routines yet.</p>
+      ) : (
+        <ul className="max-h-[60vh] divide-y divide-hairline overflow-y-auto">
+          {routines.map((r) => (
+            <li key={r.id}>
+              <button
+                onClick={() => onStart(r)}
+                className="flex w-full items-center justify-between px-1 py-3 text-left hover:bg-white/[0.03]"
+              >
+                <div>
+                  <div className="font-semibold text-ink">{r.name}</div>
+                  {r.day_of_week !== null && (
+                    <div className="mt-0.5 text-xs text-ink3">{dayLabel(r.day_of_week)}</div>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-ink3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Modal>
   );
 }

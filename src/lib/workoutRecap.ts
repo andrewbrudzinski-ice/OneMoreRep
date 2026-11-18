@@ -56,7 +56,7 @@ export function computeBeatStats(
       if (!prev) continue;
       const curr = currWorking[i]!;
       total++;
-      if (epley(curr.weight, curr.reps) >= epley(prev.weight, prev.reps)) won++;
+      if (epley(curr.weight, curr.reps) > epley(prev.weight, prev.reps)) won++;
     }
   }
 
