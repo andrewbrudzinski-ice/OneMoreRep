@@ -1,11 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import './index.css';
-
-// Register the service worker for offline support (auto-updates).
-registerSW({ immediate: true });
 
 // Recover from a stale chunk after a redeploy: if a dynamically-imported module
 // fails to load (its hashed filename changed on the server), reload once to pull
