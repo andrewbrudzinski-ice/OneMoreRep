@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -90,11 +91,28 @@ function Gate() {
   return <RouterProvider router={router} />;
 }
 
+function UpdateBanner() {
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  if (!needRefresh) return null;
+  return (
+    <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2">
+      <button
+        onClick={() => updateServiceWorker(true)}
+        className="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-[12px] font-bold text-on-accent shadow-lg"
+      >
+        <span>New version available</span>
+        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">Tap to update</span>
+      </button>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <ErrorBoundary>
       <RepositoryProvider>
         <Gate />
+        <UpdateBanner />
       </RepositoryProvider>
     </ErrorBoundary>
   );
