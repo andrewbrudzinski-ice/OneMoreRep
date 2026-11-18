@@ -245,8 +245,7 @@ export function WorkoutScreen() {
                       </div>
                       <button
                         onClick={() => startFromRoutine(routine)}
-                        disabled={count === 0}
-                        className="self-start rounded-control border border-accent px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent hover:text-on-accent disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
+                        className="self-start rounded-control border border-accent px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent hover:text-on-accent"
                       >
                         Start
                       </button>
