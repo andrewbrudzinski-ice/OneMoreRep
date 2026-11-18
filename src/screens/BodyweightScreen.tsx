@@ -101,7 +101,7 @@ export function BodyweightScreen() {
 
           <Panel className="p-4">
             <div className="mb-2 flex flex-wrap gap-3 text-xs text-ink2">
-              <Legend color="#334155" label="Raw" />
+              <Legend color="#94a3b8" label="Raw" />
               <Legend color="#8FE81E" label="7-day avg" />
               <Legend color="#38bdf8" label="30-day avg" />
             </div>
@@ -134,7 +134,7 @@ export function BodyweightScreen() {
                 <Line
                   type="monotone"
                   dataKey="weight"
-                  stroke="#334155"
+                  stroke="#94a3b8"
                   strokeWidth={1.5}
                   dot={{ r: 1.5 }}
                   isAnimationActive={false}
