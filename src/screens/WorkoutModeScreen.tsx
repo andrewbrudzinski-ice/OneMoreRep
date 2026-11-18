@@ -187,6 +187,7 @@ export function WorkoutModeScreen() {
         isPast={isPastSession}
         onFinish={() => setFinishing(true)}
         onDone={doneEditing}
+        onAddExercise={() => setPicking(true)}
       />
 
       <div className="mx-auto max-w-2xl space-y-4 p-4">
@@ -287,6 +288,7 @@ function SessionHeader({
   isPast,
   onFinish,
   onDone,
+  onAddExercise,
 }: {
   name: string;
   startedAt: string;
@@ -294,6 +296,7 @@ function SessionHeader({
   isPast?: boolean;
   onFinish: () => void;
   onDone: () => void;
+  onAddExercise: () => void;
 }) {
   const elapsed = useElapsedSeconds(isPast ? null : startedAt);
   return (
@@ -318,15 +321,24 @@ function SessionHeader({
             </div>
           )}
         </div>
-        {editing ? (
-          <Button variant="primary" onClick={onDone}>
-            Done
-          </Button>
-        ) : (
-          <Button variant="primary" onClick={onFinish}>
-            Finish
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={onAddExercise}
+            className="h-9 w-9 rounded-control border border-line bg-surface2 text-xl font-bold text-ink2 hover:bg-surface3"
+            aria-label="Add exercise"
+          >
+            +
+          </button>
+          {editing ? (
+            <Button variant="primary" onClick={onDone}>
+              Done
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={onFinish}>
+              Finish
+            </Button>
+          )}
+        </div>
       </div>
     </header>
   );
